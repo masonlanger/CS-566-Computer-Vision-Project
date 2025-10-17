@@ -11,15 +11,6 @@ def matrix_sqrt_psd(M: torch.Tensor, eps: float = 1e-9) -> torch.Tensor:
     evals, evecs = torch.linalg.eigh(M)
     evals = torch.clamp(evals, min=eps)
     return evecs @ torch.diag_embed(evals.sqrt())
-
-# @dataclass
-# class BPF_DATA:
-#     m_f: torch.Tensor
-#     P_f: torch.Tensor
-#     pre_resample_particles: torch.Tensor
-#     particles: torch.Tensor
-#     weights: torch.Tensor
-#     ancestors: torch.Tensor
     
 class ParticleFilter:
     '''
@@ -37,7 +28,6 @@ class ParticleFilter:
         prediction_noise: float,
         nu: int,
         ess_threshold: float,
-        rejuv_std: torch.Tensor,
         device = 'cpu'
     ):
         self.obs_dim = obs_dim
@@ -52,8 +42,6 @@ class ParticleFilter:
         self.prediction_noise = prediction_noise
         self.nu = nu
         self.ess_threshold = ess_threshold
-        self.rejuv_std = rejuv_std
-
         self.device = device
 
     def generate_particles(self, m: torch.Tensor, P: torch.Tensor) -> torch.Tensor:

@@ -73,8 +73,7 @@ class WorldTrack:
             num_particles = 100,
             prediction_noise = 0.0,
             nu = 5,
-            ess_threshold = 0.5,
-            rejuv_std = torch.tensor([0.05, 0.05, 0.2, 0.2])
+            ess_threshold = 0.5
         )
 
         self.tracks: List[Track] = []

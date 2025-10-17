@@ -86,10 +86,6 @@ WT_ELLIPSE_LABEL_ANNOTATOR = sv.LabelAnnotator(
     text_position=sv.Position.TOP_CENTER,
 )
 
-
-
-
-
 BOX_LABEL_ANNOTATOR = sv.LabelAnnotator(
     color=sv.ColorPalette.from_hex(COLORS),
     text_color=sv.Color.from_hex('#FFFFFF'),
@@ -154,34 +150,6 @@ def resolve_goalkeepers_team_id(
         dist_1 = np.linalg.norm(goalkeeper_xy - team_1_centroid)
         goalkeepers_team_id.append(0 if dist_0 < dist_1 else 1)
     return np.array(goalkeepers_team_id)
-
-def render_radar(
-    detections: sv.Detections,
-    keypoints: sv.KeyPoints,
-    color_lookup: np.ndarray
-) -> np.ndarray:
-    mask = (keypoints.xy[0][:, 0] > 1) & (keypoints.xy[0][:, 1] > 1)
-    transformer = ViewTransformer(
-        source=keypoints.xy[0][mask].astype(np.float32),
-        target=np.array(CONFIG.vertices)[mask].astype(np.float32)
-    )
-    xy = detections.get_anchors_coordinates(anchor=sv.Position.BOTTOM_CENTER)
-    transformed_xy = transformer.transform_points(points=xy)
-
-    radar = draw_pitch(config=CONFIG)
-    radar = draw_points_on_pitch(
-        config=CONFIG, xy=transformed_xy[color_lookup == 0],
-        face_color=sv.Color.from_hex(COLORS[0]), radius=20, pitch=radar)
-    radar = draw_points_on_pitch(
-        config=CONFIG, xy=transformed_xy[color_lookup == 1],
-        face_color=sv.Color.from_hex(COLORS[1]), radius=20, pitch=radar)
-    radar = draw_points_on_pitch(
-        config=CONFIG, xy=transformed_xy[color_lookup == 2],
-        face_color=sv.Color.from_hex(COLORS[2]), radius=20, pitch=radar)
-    radar = draw_points_on_pitch(
-        config=CONFIG, xy=transformed_xy[color_lookup == 3],
-        face_color=sv.Color.from_hex(COLORS[3]), radius=20, pitch=radar)
-    return radar
 
 def get_frame_generator(
     input: str, 
@@ -270,19 +238,6 @@ def get_frame_generator(
             wt_detections, 
             labels
         )
-
-        # # draw radar
-        # h, w, _ = frame.shape
-        # radar = render_radar(detections, keypoints, color_lookup)
-        # radar = sv.resize_image(radar, (w // 2, h // 2))
-        # radar_h, radar_w, _ = radar.shape
-        # rect = sv.Rect(
-        #     x=w // 2 - radar_w // 2,
-        #     y=h - radar_h,
-        #     width=radar_w,
-        #     height=radar_h
-        # )
-        # annotated_frame = sv.draw_image(annotated_frame, radar, opacity=0.5, rect=rect)
         yield annotated_frame
 
 def main(
