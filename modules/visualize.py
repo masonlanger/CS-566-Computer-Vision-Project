@@ -214,6 +214,9 @@ def animate_history(
     )
 
     if save_path:
+        import os
+        parent_dir = os.path.dirname(os.path.abspath(save_path))
+        os.makedirs(parent_dir, exist_ok=True)
         ext = save_path.lower().rsplit(".", 1)[-1]
         fps = max(1, int(1000 / interval))
         if ext == "mp4":
