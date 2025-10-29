@@ -1,0 +1,9 @@
+# @package _global_
+defaults:
+  - /default 
+  - _self_
+
+procedure: em
+data: ./observations.pt
+
+epochs: 2

@@ -6,7 +6,7 @@ python -m venv .env
 # activate venv
 source .env/bin/activate
 # install dependencies
-python -m pip install opencv-python torch rich supervision ultralytics rich gdown git+https://github.com/roboflow/sports.git
+python -m pip install opencv-python torch rich supervision ultralytics rich gdown hydra-core git+https://github.com/roboflow/sports.git
 # download the models & test videos
 ./setup.sh
 ```
@@ -26,3 +26,4 @@ python main.py -i videos/occlude_1.mp4 -o logs/video_1.mp4 -d cuda -f 100
 - Get a dataset to train on.
 - Figure out how to identify bad frames (i.e., no useful information); use detection confidence?
 - Figure out better way to handle homography noise.
+- Use RANSAC for more reliable homography.

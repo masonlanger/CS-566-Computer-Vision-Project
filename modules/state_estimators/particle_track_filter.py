@@ -12,7 +12,7 @@ def matrix_sqrt_psd(M: torch.Tensor, eps: float = 1e-9) -> torch.Tensor:
     evals = torch.clamp(evals, min=eps)
     return evecs @ torch.diag_embed(evals.sqrt())
     
-class ParticleFilter:
+class ParticleTrackFilter:
     '''
     A bootstrap particle filter that uses a Student's t-distribution.
     '''
