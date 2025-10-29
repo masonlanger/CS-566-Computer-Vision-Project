@@ -16,8 +16,7 @@ from sports.common.team import TeamClassifier
 from sports.common.view import ViewTransformer
 from sports.configs.soccer import SoccerPitchConfiguration
 
-from modules.world_track import WorldTrack
-from modules.visualize import animate_history
+from modules import WorldTrack, animate_history
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PLAYER_DETECTION_MODEL_PATH = os.path.join(PARENT_DIR, 'models/football-player-detection.pt')

@@ -101,7 +101,6 @@ def _collect_frame_data_with_obs(history: History):
         "unique_ids": sorted(unique_ids),
     }
 
-
 def animate_history(
     history: History,
     interval: int = 100,
