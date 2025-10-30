@@ -6,53 +6,69 @@ import numpy as np
 import sys
 import multiprocessing as mp
 from typing import Tuple
-
-def matrix_sqrt_psd(M: torch.Tensor, eps: float = 1e-9) -> torch.Tensor:
-    evals, evecs = torch.linalg.eigh(M)
-    evals = torch.clamp(evals, min=eps)
-    return evecs @ torch.diag_embed(evals.sqrt())
     
 class ParticleTrackFilter:
     '''
-    A bootstrap particle filter that uses a Student's t-distribution.
+    A per-track bootstrap particle filter.
+    Weights particles with a Student-t distribution for robustness.
     '''
+    obs_dim = 2
     def __init__(
         self, 
-        obs_dim: int,
         state_dim: int,
-        transition, 
-        transition_noise,
-        observation,
-        observation_noise,
+        transition_model: torch.nn.Module,
+        observation_model: torch.nn.Module,
         num_particles: int,
         prediction_noise: float,
         nu: int,
         ess_threshold: float,
         device = 'cpu'
     ):
-        self.obs_dim = obs_dim
         self.state_dim = state_dim
-        self.transition = transition
-        self.observation = observation
-        self.transition_noise = transition_noise
-        self.observation_noise = observation_noise
-
-        # hyperparameters
+        self.transition_model = transition_model
+        self.observation_model = observation_model
+        # filter hyperparameters
         self.num_particles = num_particles
         self.prediction_noise = prediction_noise
         self.nu = nu
         self.ess_threshold = ess_threshold
         self.device = device
+    
+    @staticmethod
+    def _matrix_sqrt(M: torch.Tensor, eps: float = 1e-9) -> torch.Tensor:
+        evals, evecs = torch.linalg.eigh(M)
+        evals = torch.clamp(evals, min=eps)
+        return evecs @ torch.diag_embed(evals.sqrt()) @ evecs.transpose(-2, -1)
+    
+    @staticmethod
+    def estimate_gaussian_density(
+        particles: torch.Tensor,
+        weights: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        '''
+        Estimates Gaussian density given particles and corresponding weights.
+        '''
+        weighted_particles = particles * weights.view(-1, 1)
+        m = weighted_particles.sum(dim=0)
+        residuals = particles - m
+        P = torch.sum(weights.view(-1, 1, 1) * (residuals.unsqueeze(-1) * residuals.unsqueeze(-2)), dim=0)
+        return m, P
 
     def generate_particles(self, m: torch.Tensor, P: torch.Tensor) -> torch.Tensor:
-        L = matrix_sqrt_psd(P)
+        L = self._matrix_sqrt(P)
         noise = torch.randn(self.num_particles, self.state_dim, device=self.device)
         particles = m + noise @ L.T
         return particles
 
-    def predict(self, particles) -> torch.Tensor: 
-        pred_particles = self.transition(particles)
-        L = matrix_sqrt_psd(self.transition_noise)
+    def predict(
+        self, 
+        particles: torch.Tensor
+    ) -> torch.Tensor: 
+        pred_particles, Q = self.transition_model(
+            particles,
+            broadcast_covariance = False
+        )
+        L = self._matrix_sqrt(Q)
         pred_particles += torch.randn_like(pred_particles) @ L.T
         if self.prediction_noise > 0.0:
             prediction_noise = self.prediction_noise * torch.randn_like(pred_particles)
@@ -75,50 +91,49 @@ class ParticleTrackFilter:
         Computes the log-likelihood of an observation under the predicted belief of a track.
         Note: The belief is represented by the set of particles so we marginalize over all particles.
         '''
-        pred_observations = self.observation(particles)
+        pred_observations = self.observation_model(particles)
         log_likelihoods = self._per_particle_log_likelihoods(true_observation, pred_observations)
-        loglik = torch.logsumexp(log_likelihoods, dim=0) - np.log(max(pred_observations.shape[0], 1))
-        return float(loglik)
+        total_log_likelihood = torch.logsumexp(log_likelihoods, dim=0) - np.log(max(pred_observations.shape[0], 1))
+        return float(total_log_likelihood)
 
     def _student_t_logpdf(
         self, 
-        diff: torch.Tensor, 
-        Sigma: torch.Tensor
+        residuals: torch.Tensor, 
+        covariances: torch.Tensor, 
+        eps: float = 1e-9
     ) -> torch.Tensor:
         '''
-        Computes the log-PDF of a multivariate Student-t distribution at residual 'diff' with scale 'Sigma'.
-        Note: I'm using Student-t instead of Gaussian because its more resilient to outliers which becomes an issue when learning the transition model.
+        Args:
+            residuals: (batch_size, dim)
+            covariance: (dim, dim) or (batch_size, dim, dim)
         '''
-        dim = diff.shape[-1]
-        jitter = 1e-6 * torch.eye(dim, dtype=torch.float32)
-        L = torch.linalg.cholesky(Sigma + jitter)
+        nu = torch.as_tensor(self.nu, dtype=torch.float32)
+        batch_size, dim = residuals.shape
+        if covariances.ndim == 2:
+            covariances = covariances.unsqueeze(0).expand(batch_size, dim, dim)
 
-        if diff.dim() == 1:
-            sol = torch.cholesky_solve(diff.unsqueeze(-1), L)
-            q = (diff.unsqueeze(-1) * sol).sum()
-        else:
-            sol = torch.cholesky_solve(diff.transpose(0, 1), L).transpose(0, 1)
-            q = (diff * sol).sum(dim=-1)
-
-        log_det = 2.0 * torch.log(torch.diag(L)).sum()
-        logC = (
-            torch.lgamma(torch.tensor((self.nu + dim) / 2.0, dtype=torch.float32))
-            - torch.lgamma(torch.tensor(self.nu / 2.0, dtype=torch.float32))
-            - (dim / 2.0) * torch.log(torch.tensor(self.nu * np.pi, dtype=torch.float32))
-            - 0.5 * log_det
+        # add jitter for stability
+        # covariances = 0.5 * (covariances + covariances.transpose(-1, -2)) + eps * torch.eye(dim)
+        sign, logabsdet = torch.linalg.slogdet(covariances)
+        sol = torch.linalg.solve(covariances, residuals.unsqueeze(-1)).squeeze(-1)
+        maha = (sol * residuals).sum(dim=-1)
+        const = (
+            torch.lgamma((nu + dim) / 2) - torch.lgamma(nu / 2)
+            - 0.5 * dim * torch.log(nu * torch.tensor(math.pi))
+            - 0.5 * logabsdet
         )
-        log_kernel = -0.5 * (self.nu + dim) * torch.log1p(q / self.nu)
-        return logC + log_kernel
+        logpdf = const - 0.5 * (nu + dim) * torch.log1p(maha / nu)
+        return logpdf
 
     def update(
         self, 
         particles: torch.Tensor, 
         observation: torch.Tensor
-    ):
+    ) -> torch.Tensor:
         '''
         Computes particle weights w.r.t. the associated obsevation.
         '''
-        pred_observations = self.observation(particles)
+        pred_observations = self.observation_model(particles)
         logp = self._per_particle_log_likelihoods(observation, pred_observations)
         logw_post = logp - np.log(max(self.num_particles, 1))
         logw_post = logw_post - torch.logsumexp(logw_post, dim=0)
