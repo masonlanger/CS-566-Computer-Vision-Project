@@ -10,7 +10,6 @@ class TransitionModel(nn.Module):
     def __init__(
         self,
         state_dim: int,
-        action_dim: int,
         num_layers: int,
         hidden_dim: int,
         scale: float,
@@ -18,7 +17,7 @@ class TransitionModel(nn.Module):
     ):
         super().__init__()
         self.model = nn.Sequential(
-            nn.Linear(state_dim + action_dim, hidden_dim),
+            nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
             *[
                 layer for _ in range(num_layers - 1) 
@@ -37,11 +36,10 @@ class TransitionModel(nn.Module):
     def forward(
         self,
         state: torch.Tensor,
-        action: torch.Tensor,
         deterministic = False,
         broadcast_covariance = True
     ):
-        delta = self.model(torch.cat([state, action], dim=-1))
+        delta = self.model(state)
         next_state = state + torch.tanh(delta) * self.scale
         if deterministic: 
             return next_state

@@ -8,7 +8,7 @@ import math
 from ..math import logpdf_gaussian, to_gaussian
 from .world_tracker import TrackPosteriors
 
-class ParticleTrackSmoother:
+class TrackSmoother:
     '''
     A per-track backward simulation particle smoother.
     '''

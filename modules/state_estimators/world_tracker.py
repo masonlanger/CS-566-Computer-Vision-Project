@@ -3,8 +3,8 @@ import torch
 from scipy.optimize import linear_sum_assignment
 
 from ..math import to_gaussian
-from .particle_track_filter import ParticleTrackFilter
-from .particle_track_smoother import ParticleTrackSmoother
+from .track_filter import ParticleTrackFilter
+from .track_smoother import ParticleTrackSmoother
 
 @dataclass
 class TrackPosteriors:
@@ -220,7 +220,7 @@ class WorldTracker:
         return tracks
 
     @torch.inference_mode()
-    def smooth(self, tracks: list): 
+    def smooth(self, tracks: list) -> list: 
         for track in tracks:
             # smoother modifies in-place
             self.track_smoother(track)

@@ -7,3 +7,24 @@ procedure: em
 data: ./observations.pt
 
 epochs: 2
+
+initial_state_variance:
+  variance: 100
+
+transition_model:
+  num_layers: 3
+  hidden_dim: 64
+  scale: 1
+  initial_variance: 1
+    
+observation_model: 
+  variance: 0.1
+
+filter:
+  num_particles: 100
+  prediction_noise: 0
+  nu: 5
+  ess_scale: 0.5
+
+smoother:
+  num_trajectories: 32

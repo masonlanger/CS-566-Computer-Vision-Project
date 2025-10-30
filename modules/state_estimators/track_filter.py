@@ -9,7 +9,7 @@ from typing import Tuple
 
 from modules import logpdf_student, matrix_sqrt
     
-class ParticleTrackFilter:
+class TrackFilter:
     '''
     A per-track bootstrap particle filter.
     Weights particles with a Student-t distribution for robustness.
@@ -23,7 +23,7 @@ class ParticleTrackFilter:
         num_particles: int,
         prediction_noise: float,
         nu: int,
-        ess_threshold: float,
+        ess_scale: float,
         device = 'cpu'
     ):
         self.state_dim = state_dim
@@ -33,7 +33,7 @@ class ParticleTrackFilter:
         self.num_particles = num_particles
         self.prediction_noise = prediction_noise
         self.nu = nu
-        self.ess_threshold = ess_threshold
+        self.ess_threshold = ess_scale * num_particles
         self.device = device
 
     def generate_particles(self, m: torch.Tensor, P: torch.Tensor) -> torch.Tensor:
