@@ -9,7 +9,7 @@ from supervision.detection.core import Detections
 from modules.view_transformer import ViewTransformer
 import copy
 
-from modules.particle_filter import ParticleFilter
+from modules.state_estimators.particle_track_filter import ParticleFilter
 
 @dataclass
 class Track:
