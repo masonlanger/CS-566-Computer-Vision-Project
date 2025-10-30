@@ -7,7 +7,7 @@ import sys
 import multiprocessing as mp
 from typing import Tuple
 
-from modules import logpdf_student, matrix_sqrt
+from ..math import logpdf_student, matrix_sqrt
     
 class TrackFilter:
     '''
@@ -56,18 +56,30 @@ class TrackFilter:
             prediction_noise = self.prediction_noise * torch.randn_like(pred_particles)
             pred_particles += prediction_noise
         return pred_particles
+    
+
+    def compute_log_likelihoods(
+        self, 
+        particles: torch.Tensor, 
+        observation: torch.Tensor, 
+        H: torch.Tensor
+    ):
+        pred_observations, R = self.observation_model(particles, H, broadcast_covariance=False)
+        residuals = observation.unsqueeze(0) - pred_observations
+        log_likelihoods = logpdf_student(residuals, R, self.nu)
+        return log_likelihoods
+
 
     def update(
         self, 
         particles: torch.Tensor, 
-        observation: torch.Tensor
+        observation: torch.Tensor,
+        H: torch.Tensor
     ) -> torch.Tensor:
         '''
         Computes particle weights w.r.t. the associated observation.
         '''
-        pred_observations, R = self.observation_model(particles, broadcast_covariance=False)
-        residuals = observation.unsqueeze(0) - pred_observations
-        log_likelihoods = logpdf_student(residuals, R, self.nu)
+        log_likelihoods = self.compute_log_likelihoods(particles, observation, H)
         norm_log_weights = log_likelihoods - torch.logsumexp(log_likelihoods, dim=0) 
         weights = torch.exp(norm_log_weights)    
         return weights

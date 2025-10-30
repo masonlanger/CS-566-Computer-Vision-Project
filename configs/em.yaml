@@ -4,7 +4,8 @@ defaults:
   - _self_
 
 procedure: em
-data: ./observations.pt
+detections_file: ./data/detections.pt
+homographies_file: ./data/homographies.pt
 
 epochs: 2
 

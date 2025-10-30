@@ -23,6 +23,7 @@ class ViewTransformer:
 
         self.m_inv = np.linalg.inv(self.m)
 
+
     def transform_points(self, points: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
         """Image → World"""
         if points.size == 0:

@@ -12,7 +12,7 @@ from procedures import Procedure
 from modules import (
     Logger, 
     ViewTransformer,
-    TransitionModel, ObservationModel,
+    TransitionModel, CameraObservationModel,
     TrackFilter, TrackSmoother, WorldTracker
 )
 
@@ -34,7 +34,7 @@ class EM(Procedure):
             initial_variance = config.transition_model.initial_variance
         )   
 
-        observation_model = ObservationModel(
+        observation_model = CameraObservationModel(
             covariance = torch.eye(2, dtype=torch.float32)
                        * float(config.observation_model.variance)
         )
@@ -75,11 +75,12 @@ class EM(Procedure):
         config = self.config
         epochs = config.epochs
 
-        observations = torch.load(config.data)
+        detections = torch.load(config.detections_file)
+        homographies = torch.load(config.homographies_file)
+        assert len(detections) == len(homographies)
         transition_model, observation_model = self._initialize_models()
-
 
         for _ in range(epochs):
             
             # for each video -> for each track -> ... 
-            
+            ...

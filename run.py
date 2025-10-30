@@ -15,9 +15,9 @@ OmegaConf.register_new_resolver('get_run_name', _get_run_name)
 def run(config: DictConfig) -> None:
     
     match config.procedure:
-        case 'generate_observations':
-            from procedures.generate_observations import GenerateObservations
-            procedure = GenerateObservations(config)
+        case 'extract_data':
+            from procedures.extract_data import ExtractData
+            procedure = ExtractData(config)
         case 'em':
             from procedures.em import EM
             procedure = EM(config)

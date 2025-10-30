@@ -6,7 +6,7 @@ from typing import Tuple
 import math
 
 from ..math import logpdf_gaussian, to_gaussian
-from .world_tracker import TrackPosteriors
+from .track_posteriors import TrackPosteriors
 
 class TrackSmoother:
     '''

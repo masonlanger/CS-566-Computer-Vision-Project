@@ -3,27 +3,9 @@ import torch
 from scipy.optimize import linear_sum_assignment
 
 from ..math import to_gaussian
-from .track_filter import ParticleTrackFilter
-from .track_smoother import ParticleTrackSmoother
-
-@dataclass
-class TrackPosteriors:
-    id: int 
-    initial_state: torch.Tensor
-    initial_state_noise: torch.Tensor
-
-    # the element at index t corresponds to the index of 
-    # the observation that this track was associated with at time t
-    associations: list | torch.Tensor
-    
-    particles: list | torch.Tensor = field(default_factory=list)
-    pre_resample_particles: list | torch.Tensor = field(default_factory=list)
-    weights: list | torch.Tensor = field(default_factory=list)
-    m_f: list | torch.Tensor = field(default_factory=list)
-    P_f: list | torch.Tensor = field(default_factory=list)
-    m_s: torch.Tensor | None = None
-    P_s: torch.Tensor | None = None
-    smoothed_trajectories: torch.Tensor = None
+from .track_filter import TrackFilter
+from .track_smoother import TrackSmoother
+from .track_posteriors import TrackPosteriors
 
 class WorldTracker:
     '''
@@ -33,8 +15,8 @@ class WorldTracker:
     def __init__(
         self, 
         initial_state_noise: float,
-        track_filter: ParticleTrackFilter, 
-        track_smoother: ParticleTrackSmoother
+        track_filter: TrackFilter, 
+        track_smoother: TrackSmoother
     ):
         self.initial_state_noise = initial_state_noise
         self.track_filter = track_filter
@@ -44,10 +26,22 @@ class WorldTracker:
         self.chi2_gate = 9.21
         self.large_cost = 1e6
 
+    def _image_to_world(
+        self, 
+        detection: torch.Tensor, 
+        H: torch.Tensor
+    ) -> torch.Tensor:
+        one = detection.new_tensor(1.0).unsqueeze(0)
+        img_xyz = torch.cat([detection, one], dim=0)
+        world_xyz = H @ img_xyz
+        world_xyz = world_xyz / torch.clamp(world_xyz[2], min=1e-8)
+        return world_xyz[:2]
+
     def _build_cost_matrix(
         self, 
         tracks: list,
         observation: torch.Tensor, 
+        H: torch.Tensor,
         mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         '''
@@ -60,9 +54,10 @@ class WorldTracker:
         for m, track in enumerate(tracks):
             for n, detection in enumerate(observation):
                 if mask is None or mask[m, n]:
-                    log_likelihood = self.track_filter._log_likelihood(
+                    log_likelihood = self.track_filter.compute_log_likelihoods(
                         track.pre_resample_particles[-1], 
-                        detection
+                        detection,
+                        H
                     )
                     C[m, n] = -float(log_likelihood)
         return C
@@ -87,22 +82,20 @@ class WorldTracker:
             associations[int(r)] = int(c)
         return associations
         
-    def _initial_birth(self, observation: torch.Tensor, T: int):
+    def _initial_birth(self, observation: torch.Tensor, H: torch.Tensor):
         '''
         Initializes all tracks using the initial observations.
         '''
         new_tracks = []
         for i, detection in enumerate(observation):
-            mean = torch.tensor(
-                [detection[0], detection[1], 0.0, 0.0], 
-                dtype=torch.float32
-            )
-            cov = self.initial_state_noise.clone()
-            particles = self.track_filter.generate_particles(mean, cov)  # expected (N, Dx)
+            world_xy = self._image_to_world(detection, torch.linalg.inv(H))
             track = TrackPosteriors(
                 id = len(new_tracks), 
-                initial_state = mean,
-                initial_state_noise = cov,
+                initial_state = torch.tensor(
+                    [world_xy[0], world_xy[1], 0.0, 0.0], 
+                    dtype=torch.float32
+                ),
+                initial_state_noise = self.initial_state_noise.clone(),
                 # on birth, the track can be automatically associated with 
                 # the observation that 'birthed' it
                 associations = [i]
@@ -110,17 +103,18 @@ class WorldTracker:
             new_tracks.append(track)
     
     @torch.inference_mode()
-    def filter(self, observations: list) -> list:
-        T = len(observations)
+    def filter(self, detections: list, homographies: list) -> list:
+        T = len(detections) 
         tracks = []
 
         for t in range(T):
-            observation = observations[t]
+            observation = detections[t]
+            H = homographies[t]
             # num. of detections
             N = observation.shape[0]
 
             if N > 0 and len(tracks) == 0:
-                new_tracks = self._initial_birth(observation, T)
+                new_tracks = self._initial_birth(observation, H)
                 tracks.extend(new_tracks)
                 continue
 
@@ -139,8 +133,13 @@ class WorldTracker:
                 pred_particles = self.track_filter.predict(prev_particles)
                 track.pre_resample_particles.append(pred_particles)
 
-            valid_mask = None
-            C = self._build_cost_matrix(tracks, observations, mask=valid_mask)
+            C = self._build_cost_matrix(
+                tracks, 
+                observation, 
+                H,
+                # not gating associations for now
+                mask = None 
+            )
             associations = self._get_associations(C)
 
             associated_tracks = associations.keys()
@@ -158,7 +157,8 @@ class WorldTracker:
                     detection = observation[obs_idx]
                     weights = self.track_filter.update(
                         pre_resample_particles,
-                        detection
+                        detection,
+                        H
                     )
                     particles = self.track_filter.resample(
                         pre_resample_particles,
@@ -179,20 +179,18 @@ class WorldTracker:
                 track.associations.append(association)
 
             for i in unassociated_observations:
-                mean = torch.tensor(
-                    [observation[i, 0], observation[i, 1], 0.0, 0.0], 
-                    dtype=torch.float32
-                )
-                cov = self.initial_state_noise.clone()
-                particles = self.track_filter.generate_particles(mean, cov)
+                detection = observation[i]
+                world_xy = self._image_to_world(detection, torch.linalg.inv(H))
                 track = TrackPosteriors(
                     id = len(tracks), 
-                    initial_state = mean,
-                    initial_state_noise = cov,
+                    initial_state = torch.tensor(
+                        [world_xy[0], world_xy[1], 0.0, 0.0], 
+                        dtype=torch.float32
+                    ),
+                    initial_state_noise = self.initial_state_noise.clone(),
                     # on birth, the track can be automatically associated with 
                     # the observation that 'birthed' it
-                    associations = [i],
-                    particles = [particles]
+                    associations = [i]
                 )
 
         return tracks
