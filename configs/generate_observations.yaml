@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - /default 
+  - _self_
+
+procedure: generate_observations
+input_dir: ./data
+output_file: ./observations.pt
