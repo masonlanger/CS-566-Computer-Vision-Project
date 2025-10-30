@@ -13,7 +13,8 @@ from modules import (
     Logger, 
     ViewTransformer,
     TransitionModel, CameraObservationModel,
-    TrackFilter, TrackSmoother, WorldTracker
+    TrackFilter, TrackSmoother, WorldTracker,
+    BatchEM
 )
 
 class EM(Procedure):
@@ -70,17 +71,42 @@ class EM(Procedure):
             track_smoother = track_smoother
         )
 
+        parameters = list(transition_model.parameters())
+        optimizer = torch.optim.Adam(parameters, lr = config.em.lr)
+
+        em = BatchEM(
+            transition_model = transition_model,
+            observation_model = observation_model,
+            world_tracker = world_tracker,
+            optimizer = optimizer
+        )
+
+        return em
 
     def __call__(self):
         config = self.config
         epochs = config.epochs
+        E = config.em.e_steps_per_epoch
+        M = config.em.m_steps_per_e_step
 
-        detections = torch.load(config.detections_file)
-        homographies = torch.load(config.homographies_file)
+        detections = torch.load(config.detections_file, weights_only=False)
+        homographies = torch.load(config.homographies_file, weights_only=False)
+        breakpoint()
         assert len(detections) == len(homographies)
         transition_model, observation_model = self._initialize_models()
+        em = self._initialize_algorithms(transition_model, observation_model)
 
-        for _ in range(epochs):
-            
-            # for each video -> for each track -> ... 
-            ...
+        # num. videos
+        N = len(detections)
+
+        for epoch_iter in range(epochs):
+            Logger.info(f'epoch={epoch_iter}')
+            for e_iter in range(E):
+                Logger.info(f'e={e_iter}')
+                posteriors = em.e_step(detections, homographies)
+                for m_iter in range(M):
+                    Logger.info(f'm={m_iter}')
+                    loss = em.m_step(detections, homographies, posteriors)
+                    Logger.log_metrics({'loss': loss}).debug(f'loss={loss}')
+
+        

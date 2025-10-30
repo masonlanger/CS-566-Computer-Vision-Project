@@ -60,8 +60,8 @@ class ExtractData(Procedure):
 
         Logger.info(f'Using device {self.device}.')
 
-        all_detections = []
-        all_homographies = []
+        batch_detections = []
+        batch_homographies = []
         for file_path in sorted(Path(config.input_dir).glob("*.mp4")):
             Logger.debug(f'Extracting data from ./{str(file_path)}.')
             video_info = sv.VideoInfo.from_video_path(str(file_path))
@@ -69,14 +69,14 @@ class ExtractData(Procedure):
                 video_path = str(file_path), 
                 n_frames = video_info.total_frames,
             )
-            all_detections.append(detections)
-            all_homographies.append(homographies)
+            batch_detections.append(detections)
+            batch_homographies.append(homographies)
 
 
         output_file = f'{config.output_dir}/detections.pt'
-        torch.save(detections, output_file)
+        torch.save(batch_detections, output_file)
         Logger.info(f"Detections saved to {output_file}.")
 
         output_file = f'{config.output_dir}/homographies.pt'
-        torch.save(homographies, output_file)
+        torch.save(batch_homographies, output_file)
         Logger.info(f"World-to-image homographies saved to {output_file}.")

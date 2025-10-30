@@ -4,6 +4,7 @@ from .view_transformer import ViewTransformer
 # from .world_track import WorldTrack
 from .logger import Logger
 from .math import *
+from .batch_em import *
 
 # packages
 from .models import *
