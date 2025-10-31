@@ -10,7 +10,7 @@ homographies_file: ./data/homographies.pt
 epochs: 2
 
 initial_state:
-  variance: 100
+  variance: 100000
 
 transition_model:
   num_layers: 3

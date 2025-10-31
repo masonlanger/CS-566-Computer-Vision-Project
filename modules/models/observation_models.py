@@ -50,7 +50,7 @@ class CameraObservationModel(torch.nn.Module):
             torch.ones_like(state[..., :1])
         ], dim=-1)
         # apply homography
-        image_xyz = world_xy1 @ H.transpose(-1, -2)
+        image_xyz = H @ world_xy1
         # homogeneous -> euclidean
         w = image_xyz[..., 2:3]
         image_xy = image_xyz[..., :2] / w # torch.clamp(w, min=1e-8)

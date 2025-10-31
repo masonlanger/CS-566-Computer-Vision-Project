@@ -6,6 +6,7 @@ from .logger import Logger
 from .math import *
 from .batch_em import *
 from .plot import *
+from .diagnostics import *
 
 # packages
 from .models import *

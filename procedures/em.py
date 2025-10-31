@@ -16,7 +16,8 @@ from modules import (
     ViewTransformer,
     TransitionModel, CameraObservationModel,
     TrackFilter, TrackSmoother, WorldTracker,
-    BatchEM
+    BatchEM,
+    animate_video
 )
 
 class EM(Procedure):
@@ -96,6 +97,10 @@ class EM(Procedure):
         assert len(detections) == len(homographies)
         transition_model, observation_model = self._initialize_models()
         em = self._initialize_algorithms(transition_model, observation_model)
+
+        anim = animate_video(detections[0])
+        Logger.save_anim(anim, 'animation.mp4')
+        breakpoint()
 
         # num. videos
         N = len(detections)

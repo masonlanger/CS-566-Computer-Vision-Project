@@ -11,7 +11,8 @@ def plot_gaussian_2d(
     mean: torch.Tensor,
     covariance: torch.Tensor,
     color: str = 'black',
-    axes: bool = False
+    show_axes: bool = False,
+    show_mean: bool = True
 ):
     mean = mean.detach().cpu().numpy()
     covariance = covariance.detach().cpu().numpy()
@@ -29,7 +30,9 @@ def plot_gaussian_2d(
         alpha = 1.0
     )
     ax.add_patch(ellipse)
-    if axes:
+    if show_mean:
+        ax.scatter(mean[0], mean[1], color=color, s=10)
+    if show_axes:
         try:
             major_x = eigvecs[0, 1] * np.sqrt(np.maximum(eigvals[1], 0))  # use the larger eigenvalue
             major_y = eigvecs[1, 1] * np.sqrt(np.maximum(eigvals[1], 0))

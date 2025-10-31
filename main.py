@@ -16,10 +16,7 @@ from sports.common.team import TeamClassifier
 from sports.common.view import ViewTransformer
 from sports.configs.soccer import SoccerPitchConfiguration
 
-from modules import WorldTrack, animate_history
-
-import logging
-from rich.logging import RichHandler
+# from modules.visualize import animate_history
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PLAYER_DETECTION_MODEL_PATH = os.path.join(PARENT_DIR, 'models/football-player-detection.pt')
@@ -88,6 +85,10 @@ WT_ELLIPSE_LABEL_ANNOTATOR = sv.LabelAnnotator(
     text_position=sv.Position.TOP_CENTER,
 )
 
+
+
+
+
 BOX_LABEL_ANNOTATOR = sv.LabelAnnotator(
     color=sv.ColorPalette.from_hex(COLORS),
     text_color=sv.Color.from_hex('#FFFFFF'),
@@ -153,10 +154,37 @@ def resolve_goalkeepers_team_id(
         goalkeepers_team_id.append(0 if dist_0 < dist_1 else 1)
     return np.array(goalkeepers_team_id)
 
+def render_radar(
+    detections: sv.Detections,
+    keypoints: sv.KeyPoints,
+    color_lookup: np.ndarray
+) -> np.ndarray:
+    mask = (keypoints.xy[0][:, 0] > 1) & (keypoints.xy[0][:, 1] > 1)
+    transformer = ViewTransformer(
+        source=keypoints.xy[0][mask].astype(np.float32),
+        target=np.array(CONFIG.vertices)[mask].astype(np.float32)
+    )
+    xy = detections.get_anchors_coordinates(anchor=sv.Position.BOTTOM_CENTER)
+    transformed_xy = transformer.transform_points(points=xy)
+
+    radar = draw_pitch(config=CONFIG)
+    radar = draw_points_on_pitch(
+        config=CONFIG, xy=transformed_xy[color_lookup == 0],
+        face_color=sv.Color.from_hex(COLORS[0]), radius=20, pitch=radar)
+    radar = draw_points_on_pitch(
+        config=CONFIG, xy=transformed_xy[color_lookup == 1],
+        face_color=sv.Color.from_hex(COLORS[1]), radius=20, pitch=radar)
+    radar = draw_points_on_pitch(
+        config=CONFIG, xy=transformed_xy[color_lookup == 2],
+        face_color=sv.Color.from_hex(COLORS[2]), radius=20, pitch=radar)
+    radar = draw_points_on_pitch(
+        config=CONFIG, xy=transformed_xy[color_lookup == 3],
+        face_color=sv.Color.from_hex(COLORS[3]), radius=20, pitch=radar)
+    return radar
+
 def get_frame_generator(
     input: str, 
     frames: int | None,
-    world_tracker: WorldTrack,
     device: str
 ) -> Iterator[np.ndarray]:
     player_detection_model = YOLO(PLAYER_DETECTION_MODEL_PATH).to(device=device)
@@ -188,10 +216,8 @@ def get_frame_generator(
         mask = (detections.class_id == PLAYER_CLASS_ID)
         detections = detections[mask]
 
-        wt_detections = world_tracker.update_with_detections(
-            keypoints, 
-            copy.deepcopy(detections)
-        )
+        breakpoint()
+
         bt_detections = byte_tracker.update_with_detections(
             copy.deepcopy(detections)
         )
@@ -228,18 +254,6 @@ def get_frame_generator(
             labels
         )
 
-        # draw WT detections
-        labels = [str(tracker_id) for tracker_id in wt_detections.tracker_id]
-
-        annotated_frame = WT_ELLIPSE_ANNOTATOR.annotate(
-            annotated_frame, 
-            wt_detections
-        )
-        annotated_frame = WT_ELLIPSE_LABEL_ANNOTATOR.annotate(
-            annotated_frame, 
-            wt_detections, 
-            labels
-        )
         yield annotated_frame
 
 def main(
@@ -248,12 +262,9 @@ def main(
     frames: int | None, 
     device: str
 ) -> None:
-    world_tracker = WorldTrack(config=CONFIG)
-    world_tracker.reset()
     frame_generator = get_frame_generator(
         input=input, 
         frames=frames,
-        world_tracker=world_tracker,
         device=device
     )
 
@@ -261,10 +272,8 @@ def main(
     with sv.VideoSink(output, video_info) as sink:
         for frame in frame_generator:
             sink.write_frame(frame)
-
-    print('Animating...')
-    anim = animate_history(world_tracker.history, save_path='./logs/animation.mp4')
     
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--input', '-i', type=str, required=True)

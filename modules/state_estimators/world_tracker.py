@@ -29,7 +29,6 @@ class WorldTracker:
         self.initial_state_noise = initial_state_noise
         self.track_filter = track_filter
         self.track_smoother = track_smoother
-
         # data association hyperparameters
         self.chi2_gate = 9.21
         self.large_cost = 1e6
@@ -98,6 +97,12 @@ class WorldTracker:
         '''
         new_tracks = []
         for i, detection in enumerate(observation):
+
+            # reshaped_points = np.array([detection]).reshape(-1, 1, 2).astype(np.float32)
+            # world_xy = cv2.perspectiveTransform(reshaped_points, np.linalg.inv(H.numpy()))
+            # world_xy.reshape(-1, 2).astype(np.float32)
+            # world_xy = torch.tensor(world_xy).squeeze()
+
             world_xy = self._image_to_world(detection, torch.linalg.inv(H))
             track = TrackPosteriors(
                 id = len(new_tracks), 
@@ -129,6 +134,15 @@ class WorldTracker:
                 new_tracks = self._initial_birth(observation, H)
                 tracks.extend(new_tracks)
                 Logger.debug(f't={t}: Created {len(new_tracks)} initial tracks.')
+                fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+                for track in tracks:
+                    m = track.initial_state[:2]
+                    P = track.initial_state_noise[:2, :2]
+                    plot_gaussian_2d(ax, m, P)
+                ax.grid(True, alpha=0.2)
+                ax.axis('equal')
+                Logger.save_fig(fig, f'test')
+                breakpoint()
                 continue
 
             for track in tracks:
@@ -205,17 +219,6 @@ class WorldTracker:
                     # the observation that 'birthed' it
                     associations = [i]
                 )
-
-            # visualize a single filter step
-            # show previous belief, 
-            # 
-            fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-            for track in tracks:
-                m, P = track.m_f[-1][:2], track.P_f[-1][:2, :2]
-                plot_gaussian_2d(ax, m, P)
-            Logger.save_fig(fig, f'test')
-
-            breakpoint()
 
 
             if unassociated_observations:
