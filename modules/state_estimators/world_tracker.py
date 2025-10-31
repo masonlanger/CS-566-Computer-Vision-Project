@@ -1,15 +1,23 @@
 from dataclasses import dataclass, field
 import torch
 from scipy.optimize import linear_sum_assignment
+import math
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+
 
 from ..math import to_gaussian
+from ..plot import plot_gaussian_2d
+from ..logger import Logger
 from .track_filter import TrackFilter
 from .track_smoother import TrackSmoother
 from .track_posteriors import TrackPosteriors
 
 class WorldTracker:
     '''
-    A per-video filter/smoother.
+    This performs state inference at the video level.
+    It manages the per-track filters/smoothers and performs data association.
     '''
     obs_dim = 2
     def __init__(
@@ -34,7 +42,7 @@ class WorldTracker:
         one = detection.new_tensor(1.0).unsqueeze(0)
         img_xyz = torch.cat([detection, one], dim=0)
         world_xyz = H @ img_xyz
-        world_xyz = world_xyz / torch.clamp(world_xyz[2], min=1e-8)
+        world_xyz[:2] /= world_xyz[2]
         return world_xyz[:2]
 
     def _build_cost_matrix(
@@ -54,11 +62,13 @@ class WorldTracker:
         for m, track in enumerate(tracks):
             for n, detection in enumerate(observation):
                 if mask is None or mask[m, n]:
-                    log_likelihood = self.track_filter.compute_log_likelihoods(
+                    log_likelihoods = self.track_filter.per_particle_log_likelihoods(
                         track.pre_resample_particles[-1], 
                         detection,
                         H
                     )
+                    log_likelihood = torch.logsumexp(log_likelihoods, dim=0) \
+                                   - math.log(log_likelihoods.numel())
                     C[m, n] = -float(log_likelihood)
         return C
 
@@ -101,6 +111,8 @@ class WorldTracker:
                 associations = [i]
             )
             new_tracks.append(track)
+
+        return new_tracks
     
     @torch.inference_mode()
     def filter(self, detections: list, homographies: list) -> list:
@@ -116,6 +128,7 @@ class WorldTracker:
             if N > 0 and len(tracks) == 0:
                 new_tracks = self._initial_birth(observation, H)
                 tracks.extend(new_tracks)
+                Logger.debug(f't={t}: Created {len(new_tracks)} initial tracks.')
                 continue
 
             for track in tracks:
@@ -177,7 +190,7 @@ class WorldTracker:
                 track.particles.append(particles)
                 track.weights.append(weights)
                 track.associations.append(association)
-
+            
             for i in unassociated_observations:
                 detection = observation[i]
                 world_xy = self._image_to_world(detection, torch.linalg.inv(H))
@@ -193,6 +206,21 @@ class WorldTracker:
                     associations = [i]
                 )
 
+            # visualize a single filter step
+            # show previous belief, 
+            # 
+            fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+            for track in tracks:
+                m, P = track.m_f[-1][:2], track.P_f[-1][:2, :2]
+                plot_gaussian_2d(ax, m, P)
+            Logger.save_fig(fig, f'test')
+
+            breakpoint()
+
+
+            if unassociated_observations:
+                Logger.debug(f't={t}: Created {len(unassociated_observations)} new tracks.')
+
         return tracks
 
     def process_tracks(self, tracks: list[TrackPosteriors]):
@@ -200,12 +228,12 @@ class WorldTracker:
         Turn track lists into tensors and verify shapes are correct.
         '''
         for track in tracks:
-            track.particles = torch.stack(track.particles, dtype=torch.float32)
-            track.associations = torch.stack(track.associations, dtype=torch.int8)
-            track.pre_resample_particles = torch.stack(track.pre_resample_particles, dtype=torch.float32)
-            track.weights = torch.stack(track.weights, dtype=torch.float32)
-            track.m_f = torch.stack(track.m_f, dtype=torch.float32)
-            track.P_f = torch.stack(track.P_s, dtype=torch.float32)
+            track.particles = torch.stack(track.particles).to(torch.float32)
+            track.associations = torch.stack(track.associations).to(torch.int8)
+            track.pre_resample_particles = torch.stack(track.pre_resample_particles).to(torch.float32)
+            track.weights = torch.stack(track.weights).to(torch.float32)
+            track.m_f = torch.stack(track.m_f).to(torch.float32)
+            track.P_f = torch.stack(track.P_s).to(torch.float32)
             assert (
                 track.associations.shape[0] - 1
                 == track.particles.shape[0]

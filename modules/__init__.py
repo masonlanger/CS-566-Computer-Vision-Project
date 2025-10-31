@@ -5,6 +5,7 @@ from .view_transformer import ViewTransformer
 from .logger import Logger
 from .math import *
 from .batch_em import *
+from .plot import *
 
 # packages
 from .models import *

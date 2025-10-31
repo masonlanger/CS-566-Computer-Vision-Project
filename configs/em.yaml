@@ -9,13 +9,13 @@ homographies_file: ./data/homographies.pt
 
 epochs: 2
 
-initial_state_variance:
+initial_state:
   variance: 100
 
 transition_model:
   num_layers: 3
   hidden_dim: 64
-  scale: 1
+  scale: 1000
   initial_variance: 1
     
 observation_model: 

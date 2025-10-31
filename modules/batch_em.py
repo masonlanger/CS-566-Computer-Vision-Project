@@ -2,8 +2,10 @@ import torch
 from typing import Tuple
 import math
 
+
 from .state_estimators import WorldTracker, TrackPosteriors
 from .math import logpdf_gaussian, logpdf_student
+from .logger import Logger
 
 class BatchEM:
     '''
@@ -31,8 +33,10 @@ class BatchEM:
         N = len(detections)
         posteriors = []
         for i in range(N):
+            Logger.debug(f'Filtering video {i}.')
             tracks = self.world_tracker.filter(detections[i], homographies[i])
             self.world_tracker.process_tracks(tracks)
+            Logger.debug(f'Smoothing video {i}.')
             tracks = self.world_tracker.smooth(tracks)
             posteriors.append(tracks)
         return posteriors

@@ -7,6 +7,8 @@ from sports.configs.soccer import SoccerPitchConfiguration
 import supervision as sv
 import torch
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+
 
 from procedures import Procedure
 from modules import (
@@ -91,7 +93,6 @@ class EM(Procedure):
 
         detections = torch.load(config.detections_file, weights_only=False)
         homographies = torch.load(config.homographies_file, weights_only=False)
-        breakpoint()
         assert len(detections) == len(homographies)
         transition_model, observation_model = self._initialize_models()
         em = self._initialize_algorithms(transition_model, observation_model)
@@ -104,6 +105,7 @@ class EM(Procedure):
             for e_iter in range(E):
                 Logger.info(f'e={e_iter}')
                 posteriors = em.e_step(detections, homographies)
+
                 for m_iter in range(M):
                     Logger.info(f'm={m_iter}')
                     loss = em.m_step(detections, homographies, posteriors)

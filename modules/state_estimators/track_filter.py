@@ -58,7 +58,7 @@ class TrackFilter:
         return pred_particles
     
 
-    def compute_log_likelihoods(
+    def per_particle_log_likelihoods(
         self, 
         particles: torch.Tensor, 
         observation: torch.Tensor, 
@@ -69,7 +69,6 @@ class TrackFilter:
         log_likelihoods = logpdf_student(residuals, R, self.nu)
         return log_likelihoods
 
-
     def update(
         self, 
         particles: torch.Tensor, 
@@ -79,7 +78,7 @@ class TrackFilter:
         '''
         Computes particle weights w.r.t. the associated observation.
         '''
-        log_likelihoods = self.compute_log_likelihoods(particles, observation, H)
+        log_likelihoods = self.per_particle_log_likelihoods(particles, observation, H)
         norm_log_weights = log_likelihoods - torch.logsumexp(log_likelihoods, dim=0) 
         weights = torch.exp(norm_log_weights)    
         return weights

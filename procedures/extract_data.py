@@ -50,8 +50,8 @@ class ExtractData(Procedure):
             H_inv = np.linalg.inv(H)
             xy = frame_detections.get_anchors_coordinates(anchor=sv.Position.BOTTOM_CENTER)
 
-            detections.append(xy)
-            homographies.append(H_inv)
+            detections.append(torch.tensor(xy, dtype=torch.float32))
+            homographies.append(torch.tensor(H_inv, dtype=torch.float32))
         
         return detections, homographies
 

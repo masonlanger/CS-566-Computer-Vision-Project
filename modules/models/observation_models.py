@@ -52,7 +52,7 @@ class CameraObservationModel(torch.nn.Module):
         # apply homography
         image_xyz = world_xy1 @ H.transpose(-1, -2)
         # homogeneous -> euclidean
-        w = image_xyz[..., 2].clamp_min(1e-8)
-        image_xy = image_xyz[..., :2] / w.unsqueeze(-1)
+        w = image_xyz[..., 2:3]
+        image_xy = image_xyz[..., :2] / w # torch.clamp(w, min=1e-8)
         covariance = self.compute_covariance(state, broadcast_covariance)
         return image_xy, covariance
