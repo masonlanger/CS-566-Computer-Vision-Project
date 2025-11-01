@@ -98,9 +98,9 @@ class EM(Procedure):
         transition_model, observation_model = self._initialize_models()
         em = self._initialize_algorithms(transition_model, observation_model)
 
-        anim = animate_video(detections[0])
+        anim = animate_video(detections[0], homographies[0])
         Logger.save_anim(anim, 'animation.mp4')
-        breakpoint()
+        return
 
         # num. videos
         N = len(detections)

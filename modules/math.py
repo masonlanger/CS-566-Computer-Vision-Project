@@ -2,6 +2,16 @@ import torch
 import math
 from typing import Tuple
 
+def apply_homography(
+    points: torch.Tensor, 
+    H: torch.Tensor
+) -> torch.Tensor:
+    ones = torch.ones(*points.shape[:-1], 1, dtype=points.dtype, device=points.device)
+    homo = torch.cat([points, ones], dim=-1)
+    projections = homo @ H.T
+    projections = projections[..., :2] / projections[..., 2:]
+    return projections
+
 def logpdf_student(
     residuals: torch.Tensor, 
     covariances: torch.Tensor, 

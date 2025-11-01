@@ -39,7 +39,8 @@ class Logger:
             show_time=True,
             show_level=True,
             show_path=True,
-            markup=True,  # Enable Rich markup processing
+            markup=True,
+            log_time_format="%H:%M:%S"
         )
         console_handler.setFormatter(logging.Formatter("%(message)s"))
         cls.logger = logging.getLogger(__name__)

@@ -7,7 +7,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 
-from ..math import to_gaussian
+from ..math import to_gaussian, apply_homography
 from ..plot import plot_gaussian_2d
 from ..logger import Logger
 from .track_filter import TrackFilter
@@ -32,17 +32,6 @@ class WorldTracker:
         # data association hyperparameters
         self.chi2_gate = 9.21
         self.large_cost = 1e6
-
-    def _image_to_world(
-        self, 
-        detection: torch.Tensor, 
-        H: torch.Tensor
-    ) -> torch.Tensor:
-        one = detection.new_tensor(1.0).unsqueeze(0)
-        img_xyz = torch.cat([detection, one], dim=0)
-        world_xyz = H @ img_xyz
-        world_xyz[:2] /= world_xyz[2]
-        return world_xyz[:2]
 
     def _build_cost_matrix(
         self, 
@@ -103,7 +92,7 @@ class WorldTracker:
             # world_xy.reshape(-1, 2).astype(np.float32)
             # world_xy = torch.tensor(world_xy).squeeze()
 
-            world_xy = self._image_to_world(detection, torch.linalg.inv(H))
+            world_xy = apply_homography(detection, torch.linalg.inv(H))
             track = TrackPosteriors(
                 id = len(new_tracks), 
                 initial_state = torch.tensor(
@@ -207,7 +196,7 @@ class WorldTracker:
             
             for i in unassociated_observations:
                 detection = observation[i]
-                world_xy = self._image_to_world(detection, torch.linalg.inv(H))
+                world_xy = apply_homography(detection, torch.linalg.inv(H))
                 track = TrackPosteriors(
                     id = len(tracks), 
                     initial_state = torch.tensor(
