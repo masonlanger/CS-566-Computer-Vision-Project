@@ -6,6 +6,7 @@ defaults:
 procedure: em
 detections_file: ./data/detections.pt
 homographies_file: ./data/homographies.pt
+projections_file: ./data/projections.pt
 
 epochs: 2
 
@@ -15,15 +16,15 @@ initial_state:
 transition_model:
   num_layers: 3
   hidden_dim: 64
-  scale: 1000
-  initial_variance: 1
+  scale: 10
+  initial_variance: 100.0
     
 observation_model: 
   variance: 0.1
 
 filter:
   num_particles: 100
-  prediction_noise: 0
+  prediction_noise: 100.0
   nu: 5
   ess_scale: 0.5
 

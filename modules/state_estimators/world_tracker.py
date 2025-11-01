@@ -7,7 +7,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 
-from ..math import to_gaussian, apply_homography
+from ..math import particles_to_gaussian, apply_homography
 from ..plot import plot_gaussian_2d
 from ..logger import Logger
 from .track_filter import TrackFilter
@@ -50,7 +50,7 @@ class WorldTracker:
         for m, track in enumerate(tracks):
             for n, detection in enumerate(observation):
                 if mask is None or mask[m, n]:
-                    log_likelihoods = self.track_filter.per_particle_log_likelihoods(
+                    log_likelihoods, pred_observations = self.track_filter.per_particle_log_likelihoods(
                         track.pre_resample_particles[-1], 
                         detection,
                         H
@@ -92,7 +92,7 @@ class WorldTracker:
             # world_xy.reshape(-1, 2).astype(np.float32)
             # world_xy = torch.tensor(world_xy).squeeze()
 
-            world_xy = apply_homography(detection, torch.linalg.inv(H))
+            world_xy = apply_homography(detection, torch.inverse(H))
             track = TrackPosteriors(
                 id = len(new_tracks), 
                 initial_state = torch.tensor(
@@ -102,9 +102,10 @@ class WorldTracker:
                 initial_state_noise = self.initial_state_noise.clone(),
                 # on birth, the track can be automatically associated with 
                 # the observation that 'birthed' it
-                associations = [i]
+                # associations = [i]
             )
             new_tracks.append(track)
+            break
 
         return new_tracks
     
@@ -123,15 +124,14 @@ class WorldTracker:
                 new_tracks = self._initial_birth(observation, H)
                 tracks.extend(new_tracks)
                 Logger.debug(f't={t}: Created {len(new_tracks)} initial tracks.')
-                fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-                for track in tracks:
-                    m = track.initial_state[:2]
-                    P = track.initial_state_noise[:2, :2]
-                    plot_gaussian_2d(ax, m, P)
-                ax.grid(True, alpha=0.2)
-                ax.axis('equal')
-                Logger.save_fig(fig, f'test')
-                breakpoint()
+                # fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+                # for track in tracks:
+                #     m = track.initial_state[:2]
+                #     P = track.initial_state_noise[:2, :2]
+                #     plot_gaussian_2d(ax, m, P)
+                # ax.grid(True, alpha=0.2)
+                # ax.axis('equal')
+                # Logger.save_fig(fig, f'test')
                 continue
 
             for track in tracks:
@@ -157,6 +157,7 @@ class WorldTracker:
                 mask = None 
             )
             associations = self._get_associations(C)
+            # breakpoint()
 
             associated_tracks = associations.keys()
             associated_observations = associations.values()
@@ -171,7 +172,7 @@ class WorldTracker:
                 if associated:
                     obs_idx = associations[track.id]
                     detection = observation[obs_idx]
-                    weights = self.track_filter.update(
+                    weights, pred_observations = self.track_filter.update(
                         pre_resample_particles,
                         detection,
                         H
@@ -187,31 +188,31 @@ class WorldTracker:
                     weights = self.track_filter.uniform_weights()
                     association = -1
 
-                m, P = to_gaussian(pre_resample_particles, weights)
+                m, P = particles_to_gaussian(pre_resample_particles, weights)
                 track.m_f.append(m)
                 track.P_f.append(P)
                 track.particles.append(particles)
                 track.weights.append(weights)
                 track.associations.append(association)
             
-            for i in unassociated_observations:
-                detection = observation[i]
-                world_xy = apply_homography(detection, torch.linalg.inv(H))
-                track = TrackPosteriors(
-                    id = len(tracks), 
-                    initial_state = torch.tensor(
-                        [world_xy[0], world_xy[1], 0.0, 0.0], 
-                        dtype=torch.float32
-                    ),
-                    initial_state_noise = self.initial_state_noise.clone(),
-                    # on birth, the track can be automatically associated with 
-                    # the observation that 'birthed' it
-                    associations = [i]
-                )
+            # for i in unassociated_observations:
+            #     detection = observation[i]
+            #     world_xy = apply_homography(detection, torch.linalg.inv(H))
+            #     track = TrackPosteriors(
+            #         id = len(tracks), 
+            #         initial_state = torch.tensor(
+            #             [world_xy[0], world_xy[1], 0.0, 0.0], 
+            #             dtype=torch.float32
+            #         ),
+            #         initial_state_noise = self.initial_state_noise.clone(),
+            #         # on birth, the track can be automatically associated with 
+            #         # the observation that 'birthed' it
+            #         # associations = [i]
+            #     )
+            #     tracks.append(track)
 
-
-            if unassociated_observations:
-                Logger.debug(f't={t}: Created {len(unassociated_observations)} new tracks.')
+            # if unassociated_observations:
+            #     Logger.debug(f't={t}: Created {len(unassociated_observations)} new tracks.')
 
         return tracks
 
@@ -221,13 +222,13 @@ class WorldTracker:
         '''
         for track in tracks:
             track.particles = torch.stack(track.particles).to(torch.float32)
-            track.associations = torch.stack(track.associations).to(torch.int8)
+            track.associations = torch.tensor(track.associations).to(torch.int8)
             track.pre_resample_particles = torch.stack(track.pre_resample_particles).to(torch.float32)
             track.weights = torch.stack(track.weights).to(torch.float32)
             track.m_f = torch.stack(track.m_f).to(torch.float32)
-            track.P_f = torch.stack(track.P_s).to(torch.float32)
+            track.P_f = torch.stack(track.P_f).to(torch.float32)
             assert (
-                track.associations.shape[0] - 1
+                track.associations.shape[0]
                 == track.particles.shape[0]
                 == track.pre_resample_particles.shape[0]
                 == track.weights.shape[0]
@@ -241,6 +242,6 @@ class WorldTracker:
     def smooth(self, tracks: list) -> list: 
         for track in tracks:
             # smoother modifies in-place
-            self.track_smoother(track)
+            self.track_smoother.smooth(track)
         return tracks
         

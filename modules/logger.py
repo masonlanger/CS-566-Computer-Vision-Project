@@ -42,7 +42,6 @@ class Logger:
             markup=True,
             log_time_format="%H:%M:%S"
         )
-        console_handler.setFormatter(logging.Formatter("%(message)s"))
         cls.logger = logging.getLogger(__name__)
         cls.logger.setLevel(logging.DEBUG)
         cls.logger.addHandler(console_handler)
@@ -80,7 +79,8 @@ class Logger:
         )
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(logging.Formatter(
-            "%(asctime)s %(filename)s:%(lineno)d %(levelname)s %(message)s"
+            fmt="%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s %(message)s",
+            datefmt="%H:%M:%S"    # <-- this forces time-only
         ))
         cls.logger.addHandler(file_handler)
         cls.info(f'Logging to {log_dir}.')

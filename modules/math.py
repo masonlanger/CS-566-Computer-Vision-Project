@@ -66,7 +66,7 @@ def matrix_sqrt(M: torch.Tensor, eps: float = 1e-9) -> torch.Tensor:
     evals = torch.clamp(evals, min=eps)
     return evecs @ torch.diag_embed(evals.sqrt()) @ evecs.transpose(-2, -1)
 
-def to_gaussian(
+def particles_to_gaussian(
     particles: torch.Tensor,
     weights: torch.Tensor | None = None
 ) -> Tuple[torch.Tensor, torch.Tensor]:

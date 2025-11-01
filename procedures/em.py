@@ -17,7 +17,8 @@ from modules import (
     TransitionModel, CameraObservationModel,
     TrackFilter, TrackSmoother, WorldTracker,
     BatchEM,
-    animate_video
+    animate_video, animate_state_estimation,
+    apply_homography
 )
 
 class EM(Procedure):
@@ -25,6 +26,7 @@ class EM(Procedure):
     def __init__(self, config):
         self.config = config
         self.device = config.device
+        self.debug = config.debug
         self.field_config = SoccerPitchConfiguration()
     
     def _initialize_models(self):
@@ -94,13 +96,27 @@ class EM(Procedure):
 
         detections = torch.load(config.detections_file, weights_only=False)
         homographies = torch.load(config.homographies_file, weights_only=False)
+        # projections = torch.load(config.projections_file, weights_only=False)
+
         assert len(detections) == len(homographies)
         transition_model, observation_model = self._initialize_models()
         em = self._initialize_algorithms(transition_model, observation_model)
 
-        anim = animate_video(detections[0], homographies[0])
-        Logger.save_anim(anim, 'animation.mp4')
-        return
+        # anim = animate_video(detections[1], homographies[1])
+        # Logger.save_anim(anim, 'animation.mp4')
+        # return
+
+        detections = [detections[1][:20]]
+        homographies = [homographies[1][:20]]
+        projections = []
+        for i, _detections in enumerate(detections):
+            T = len(_detections) 
+            _projections = []
+            for t in range(T):
+                _projections.append(
+                    apply_homography(_detections[t], torch.inverse(homographies[i][t]))
+                )
+            projections.append(_projections)
 
         # num. videos
         N = len(detections)
@@ -110,6 +126,17 @@ class EM(Procedure):
             for e_iter in range(E):
                 Logger.info(f'e={e_iter}')
                 posteriors = em.e_step(detections, homographies)
+
+                if self.debug:
+                    video_idx = 0
+                    anim = animate_state_estimation(
+                        detections[video_idx],
+                        projections[video_idx],
+                        posteriors[video_idx][0]
+                    )
+                    Logger.save_anim(anim, 'state_estimation.mp4')
+                    return
+
 
                 for m_iter in range(M):
                     Logger.info(f'm={m_iter}')

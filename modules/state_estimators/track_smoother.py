@@ -5,7 +5,7 @@ import sys
 from typing import Tuple
 import math
 
-from ..math import logpdf_gaussian, to_gaussian
+from ..math import logpdf_gaussian, particles_to_gaussian
 from .track_posteriors import TrackPosteriors
 
 class TrackSmoother:
@@ -41,7 +41,7 @@ class TrackSmoother:
         # sample last state for each backward trajectory
         last_indices = torch.multinomial(weights[T-1], self.num_trajectories, replacement=True)
         smoothed_trajectories[T-1] = pre_resample_particles[T-1][last_indices]
-        m_s[T-1], P_s[T-1] = to_gaussian(smoothed_trajectories[T-1])
+        m_s[T-1], P_s[T-1] = particles_to_gaussian(smoothed_trajectories[T-1])
         
         # backward simulation
         for t in range(T-2, -1, -1):
@@ -63,7 +63,7 @@ class TrackSmoother:
                 idx = torch.distributions.Categorical(logits=logits).sample()
                 smoothed_trajectories[t, j] = current_particles[idx]
             
-            m_s[t], P_s[t] = to_gaussian(smoothed_trajectories[t])
+            m_s[t], P_s[t] = particles_to_gaussian(smoothed_trajectories[t])
 
         track.m_s = m_s
         track.P_s = P_s

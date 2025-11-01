@@ -57,7 +57,6 @@ class TrackFilter:
             pred_particles += prediction_noise
         return pred_particles
     
-
     def per_particle_log_likelihoods(
         self, 
         particles: torch.Tensor, 
@@ -67,7 +66,7 @@ class TrackFilter:
         pred_observations, R = self.observation_model(particles, H, broadcast_covariance=False)
         residuals = observation.unsqueeze(0) - pred_observations
         log_likelihoods = logpdf_student(residuals, R, self.nu)
-        return log_likelihoods
+        return log_likelihoods, pred_observations
 
     def update(
         self, 
@@ -78,10 +77,10 @@ class TrackFilter:
         '''
         Computes particle weights w.r.t. the associated observation.
         '''
-        log_likelihoods = self.per_particle_log_likelihoods(particles, observation, H)
+        log_likelihoods, pred_observations = self.per_particle_log_likelihoods(particles, observation, H)
         norm_log_weights = log_likelihoods - torch.logsumexp(log_likelihoods, dim=0) 
         weights = torch.exp(norm_log_weights)    
-        return weights
+        return weights, pred_observations
 
     def uniform_weights(self) -> torch.Tensor:
         return torch.full(
@@ -97,7 +96,7 @@ class TrackFilter:
         weights: torch.Tensor
     ) -> torch.Tensor:
         ess = 1.0 / (torch.sum(weights ** 2) + 1e-12)
-        if ess < self.ess_threshold * self.num_particles:
+        if ess < self.ess_threshold:
             idx = torch.multinomial(weights, num_samples=self.num_particles, replacement=True)
         else:
             # dont resample

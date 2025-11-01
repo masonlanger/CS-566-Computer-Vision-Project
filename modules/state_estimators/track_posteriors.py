@@ -9,8 +9,7 @@ class TrackPosteriors:
 
     # the element at index t corresponds to the index of 
     # the observation that this track was associated with at time t
-    associations: list | torch.Tensor
-    
+    associations: list | torch.Tensor = field(default_factory=list)
     particles: list | torch.Tensor = field(default_factory=list)
     pre_resample_particles: list | torch.Tensor = field(default_factory=list)
     weights: list | torch.Tensor = field(default_factory=list)
