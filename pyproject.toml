@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "world_tracker"
+version = "1.0.0"
+
+[project.scripts]
+run = "main:run"
+clean = "main:clean"
+debug = "main:debug"
+
+[tool.setuptools]
+packages = ["modules", "procedures", "configs"]
+py-modules = ["main"]

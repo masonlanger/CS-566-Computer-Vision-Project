@@ -6,9 +6,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-
 from ..math import particles_to_gaussian, apply_homography
-from ..plot import plot_gaussian_2d
 from ..logger import Logger
 from .track_filter import TrackFilter
 from .track_smoother import TrackSmoother
@@ -70,7 +68,7 @@ class WorldTracker:
         Note: If K != M, Hungarian will still return min(#rows, #cols) matches.
         We'll treat unassigned tracks/detections explicitly after.
         '''
-        if C.numel() == 0: return []
+        if C.numel() == 0: return {}
         row_idx, col_idx = linear_sum_assignment(C.cpu().numpy())
         associations = {}
         for r, c in zip(row_idx, col_idx):
@@ -80,7 +78,7 @@ class WorldTracker:
             associations[int(r)] = int(c)
         return associations
         
-    def _initial_birth(self, observation: torch.Tensor, H: torch.Tensor):
+    def _initial_birth(self, observation: torch.Tensor, H: torch.Tensor, t: int):
         '''
         Initializes all tracks using the initial observations.
         '''
@@ -100,6 +98,7 @@ class WorldTracker:
                     dtype=torch.float32
                 ),
                 initial_state_noise = self.initial_state_noise.clone(),
+                birth_step = t + 1
                 # on birth, the track can be automatically associated with 
                 # the observation that 'birthed' it
                 # associations = [i]
@@ -121,7 +120,7 @@ class WorldTracker:
             N = observation.shape[0]
 
             if N > 0 and len(tracks) == 0:
-                new_tracks = self._initial_birth(observation, H)
+                new_tracks = self._initial_birth(observation, H, t)
                 tracks.extend(new_tracks)
                 Logger.debug(f't={t}: Created {len(new_tracks)} initial tracks.')
                 # fig, ax = plt.subplots(1, 1, figsize=(5, 5))
@@ -194,25 +193,29 @@ class WorldTracker:
                 track.particles.append(particles)
                 track.weights.append(weights)
                 track.associations.append(association)
-            
-            # for i in unassociated_observations:
-            #     detection = observation[i]
-            #     world_xy = apply_homography(detection, torch.linalg.inv(H))
-            #     track = TrackPosteriors(
-            #         id = len(tracks), 
-            #         initial_state = torch.tensor(
-            #             [world_xy[0], world_xy[1], 0.0, 0.0], 
-            #             dtype=torch.float32
-            #         ),
-            #         initial_state_noise = self.initial_state_noise.clone(),
-            #         # on birth, the track can be automatically associated with 
-            #         # the observation that 'birthed' it
-            #         # associations = [i]
-            #     )
-            #     tracks.append(track)
 
-            # if unassociated_observations:
-            #     Logger.debug(f't={t}: Created {len(unassociated_observations)} new tracks.')
+                # if association != -1 and track.confirmation_step is None:
+                #     track.confirmation_step = t
+            
+            for i in unassociated_observations:
+                detection = observation[i]
+                world_xy = apply_homography(detection, torch.linalg.inv(H))
+                track = TrackPosteriors(
+                    id = len(tracks), 
+                    initial_state = torch.tensor(
+                        [world_xy[0], world_xy[1], 0.0, 0.0], 
+                        dtype=torch.float32
+                    ),
+                    initial_state_noise = self.initial_state_noise.clone(),
+                    birth_step = t + 1
+                    # on birth, the track can be automatically associated with 
+                    # the observation that 'birthed' it
+                    # associations = [i]
+                )
+                tracks.append(track)
+
+            if unassociated_observations:
+                Logger.debug(f't={t}: Created {len(unassociated_observations)} new tracks.')
 
         return tracks
 

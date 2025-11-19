@@ -3,6 +3,6 @@ defaults:
   - /default 
   - _self_
 
-procedure: extract_data
+procedure: preprocess
 input_dir: ./videos
 output_dir: ./data

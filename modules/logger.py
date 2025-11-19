@@ -107,8 +107,8 @@ class Logger:
     @classmethod
     def debug(cls, *args, stacklevel=2, **kwargs): 
         msg = cls.format_msg(args)
-        styled_msg = f"[italic]{msg}[/italic]"  # use Rich's markup for dimming
-        cls.logger.debug(styled_msg, stacklevel=stacklevel, **kwargs)
+        # msg = f"[italic]{msg}[/italic]"
+        cls.logger.debug(msg, stacklevel=stacklevel, **kwargs)
         return cls
     
     @classmethod

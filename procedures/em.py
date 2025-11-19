@@ -9,8 +9,7 @@ import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-
-from procedures import Procedure
+from procedures import register, Procedure
 from modules import (
     Logger, 
     ViewTransformer,
@@ -21,8 +20,8 @@ from modules import (
     apply_homography
 )
 
+@register('em')
 class EM(Procedure):
-
     def __init__(self, config):
         self.config = config
         self.device = config.device
@@ -96,7 +95,7 @@ class EM(Procedure):
 
         detections = torch.load(config.detections_file, weights_only=False)
         homographies = torch.load(config.homographies_file, weights_only=False)
-        # projections = torch.load(config.projections_file, weights_only=False)
+        projections = torch.load(config.projections_file, weights_only=False)
 
         assert len(detections) == len(homographies)
         transition_model, observation_model = self._initialize_models()
@@ -108,15 +107,15 @@ class EM(Procedure):
 
         detections = [detections[1][:20]]
         homographies = [homographies[1][:20]]
-        projections = []
-        for i, _detections in enumerate(detections):
-            T = len(_detections) 
-            _projections = []
-            for t in range(T):
-                _projections.append(
-                    apply_homography(_detections[t], torch.inverse(homographies[i][t]))
-                )
-            projections.append(_projections)
+        projections = [projections[1][:20]]
+        # for i, _detections in enumerate(detections):
+        #     T = len(_detections) 
+        #     _projections = []
+        #     for t in range(T):
+        #         _projections.append(
+        #             apply_homography(_detections[t], torch.inverse(homographies[i][t]))
+        #         )
+        #     projections.append(_projections)
 
         # num. videos
         N = len(detections)
@@ -132,7 +131,8 @@ class EM(Procedure):
                     anim = animate_state_estimation(
                         detections[video_idx],
                         projections[video_idx],
-                        posteriors[video_idx][0]
+                        posteriors[video_idx][0:3],
+                        show_particles=True
                     )
                     Logger.save_anim(anim, 'state_estimation.mp4')
                     return

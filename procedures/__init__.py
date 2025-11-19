@@ -1,6 +1,3 @@
-from abc import ABC, abstractmethod
-from omegaconf import DictConfig
-
-class Procedure(ABC):
-    def __init__(self, config: DictConfig):
-        self.config = config
+from .procedure import Procedure, register
+from .em import EM
+from .preprocess import Preprocess

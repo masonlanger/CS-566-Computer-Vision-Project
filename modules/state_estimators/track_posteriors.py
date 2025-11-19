@@ -6,6 +6,10 @@ class TrackPosteriors:
     id: int 
     initial_state: torch.Tensor
     initial_state_noise: torch.Tensor
+    
+    # this is the first step in which particles are generated
+    birth_step: int
+    # confirmation_step: int | None = None
 
     # the element at index t corresponds to the index of 
     # the observation that this track was associated with at time t
@@ -18,3 +22,4 @@ class TrackPosteriors:
     m_s: torch.Tensor | None = None
     P_s: torch.Tensor | None = None
     smoothed_trajectories: torch.Tensor = None
+
