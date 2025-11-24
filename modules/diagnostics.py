@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from sports.configs.soccer import SoccerPitchConfiguration
+import cv2
 
 from matplotlib.transforms import offset_copy
 
@@ -107,16 +108,32 @@ def animate_video(
 def animate_state_estimation(
     detections: list,
     projections: list,
-    tracks: list[TrackPosteriors],
+    homographies: list,
+    track: TrackPosteriors,
     T: int | None = None,
     interval = 100,
-    show_particles = False
+    show_particles = False,
+    video_path: str | None = None
 ):
     field = SoccerPitchConfiguration()
+
+    frames = None
+    if video_path is not None:
+        cap = cv2.VideoCapture(video_path)
+        frames = []
+        ok, frame = cap.read()
+        while ok:
+            # cv2 gives BGR, matplotlib wants RGB
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frames.append(frame)
+            ok, frame = cap.read()
+        cap.release()
+        if len(frames) == 0:
+            raise ValueError(f"No frames read from {video_path}")
+
     T = len(detections) if T is None else T
 
-
-    fig, (ax_image, ax_world) = plt.subplots(2, 1, figsize=(5, 6))
+    fig, (ax_image, ax_world) = plt.subplots(2, 1, figsize=(7, 8))
 
     ax_image.set_xlim(0, 1920)
     ax_image.set_ylim(0, 1080)
@@ -139,148 +156,144 @@ def animate_state_estimation(
     world_text_offset = offset_copy(ax_world.transData, fig=fig, x=0, y=4, units='points')
 
     _title = fig.suptitle("t=0")
+
+    _video_frame = ax_image.imshow(frames[0], alpha=1.0, zorder=0) if frames is not None else None
+
     # image
-    _detections = ax_image.scatter([], [], s=10, color='black')
-    _associated_detections = ax_image.scatter([], [], s=20, color='red')
+    _detections = ax_image.scatter([], [], s=10, color='white')
+    _associated_detection = ax_image.scatter([], [], s=20, color='red')
+
     # world
-    _projections = ax_world.scatter([], [], s=10, color='black')
-    _means = ax_world.scatter([], [], s=10, color='red')
+    _world_to_image_projection = ax_image.scatter([], [], s=10, color='blue')
+    _image_to_world_projections = ax_world.scatter([], [], s=10, color='black')
+    _mean = ax_world.scatter([], [], s=10, color='red')
     _particles = ax_world.scatter([], [], s=1, color='blue')
     _pre_resample_particles = ax_world.scatter([], [], s=1, color='blue', alpha=0.1)
 
-    track = tracks[0]
+    # track = tracks[0]
 
     def init():
+
+        if _video_frame is not None:
+            _video_frame.set_data(frames[0])
+
         # image
         _detections.set_offsets(np.empty((0, 2)))
-        _associated_detections.set_offsets(np.empty((0, 2)))
+        _associated_detection.set_offsets(np.empty((0, 2)))
         # world
-        _projections.set_offsets(np.empty((0, 2)))
-        _means.set_offsets(np.empty((0, 2)))
+        _world_to_image_projection.set_offsets(np.empty((0, 2)))
+        _image_to_world_projections.set_offsets(np.empty((0, 2)))
+        _mean.set_offsets(np.empty((0, 2)))
         _particles.set_offsets(np.empty((0, 2)))
         _pre_resample_particles.set_offsets(np.empty((0, 2)))
         _title.set_text("t=0")
         
         return (
             _detections,
-            _associated_detections,
+            _associated_detection,
             _image_labels,
-            _projections,
-            _means,
+            _world_to_image_projection,
+            _image_to_world_projections,
+            _mean,
             _particles,
             _pre_resample_particles,
             _title
         )
     
     def update(t):
-        try:
-            detections_t = detections[t].detach().cpu().numpy()
-            _detections.set_offsets(detections_t)
-            for label in _image_labels: label.remove()
-            _image_labels.clear()
-            for i, (x, y) in enumerate(detections_t):
-                txt = ax_image.text(x, y, str(i), color="black", fontsize=6, ha='center', va='bottom', transform=image_text_offset)
-                _image_labels.append(txt)
+        # try:
+        # image-space
+        if _video_frame is not None and t < len(frames):
+            _video_frame.set_data(frames[t])
 
-            associations = []
-            associated_detections = []
-            associated_projections = []
-            means = []
-            track_particles = []
-            track_pre_particles = []
+        detections_t = detections[t].detach().cpu().numpy()
+        _detections.set_offsets(detections_t)
 
-            projections_t = projections[t].detach().cpu().numpy()
+        for label in _image_labels: label.remove()
+        _image_labels.clear()
+        for i, (x, y) in enumerate(detections_t):
+            txt = ax_image.text(
+                x, y, str(i), 
+                color="white", 
+                fontsize=6, 
+                ha='center', 
+                va='bottom', 
+                transform=image_text_offset
+            )
+            _image_labels.append(txt)
 
-            for track_idx, track in enumerate(tracks):
-                track_age = t - track.birth_step
-                if track_age < 0 or track_age >= len(track.m_f):
-                    continue
+        # world-space
+        projections_t = projections[t].detach().cpu().numpy()
+        _image_to_world_projections.set_offsets(projections_t)
 
-                mean = track.m_f[track_age].detach().cpu().numpy()[:2]
-                means.append(mean)
+        for label in _world_labels: label.remove()
+        _world_labels.clear()
+        for i, (x, y) in enumerate(projections_t):
+            txt = ax_world.text(
+                x, y, str(i), 
+                color="black", 
+                fontsize=6, 
+                ha='center', 
+                va='bottom', 
+                transform=world_text_offset
+            )
+            _world_labels.append(txt)
 
-                # Association
-                assoc = int(track.associations[track_age])
-                associations.append(assoc)
-                if 0 <= assoc < len(detections_t):
-                    associated_detections.append(detections_t[assoc])
-                    if 0 <= assoc < len(projections_t):
-                        associated_projections.append(projections_t[assoc])
 
-                if show_particles:
-                    particles = (
-                        track.particles[track_age].detach().cpu().numpy()[:, :2]
-                    )
-                    pre_resample = (
-                        track.pre_resample_particles[track_age]
-                        .detach()
-                        .cpu()
-                        .numpy()[:, :2]
-                    )
-                    track_particles.append(particles)
-                    track_pre_particles.append(pre_resample)
 
-            # --- set scatter data for all tracks at time t ---
-            if associated_detections:
-                _associated_detections.set_offsets(
-                    np.stack(associated_detections, axis=0)
-                )
-            else:
-                _associated_detections.set_offsets(np.empty((0, 2)))
+        track_step = t - track.birth_step
+        if track_step >= 0:
+            association = int(track.associations[track_step])
 
-            if associated_projections:
-                _projections.set_offsets(np.stack(associated_projections, axis=0))
-            else:
-                _projections.set_offsets(np.empty((0, 2)))
+            _associated_detection.set_offsets(detections_t[association])
 
-            if means:
-                _means.set_offsets(np.stack(means, axis=0))
-            else:
-                _means.set_offsets(np.empty((0, 2)))
+            mean = track.m_f[track_step].detach().cpu().numpy()[:2]
+            _mean.set_offsets(mean)
 
-            if show_particles and track_particles:
-                _particles.set_offsets(np.concatenate(track_particles, axis=0))
-                _pre_resample_particles.set_offsets(
-                    np.concatenate(track_pre_particles, axis=0)
-                )
-            else:
-                _particles.set_offsets(np.empty((0, 2)))
-                _pre_resample_particles.set_offsets(np.empty((0, 2)))
+            _world_to_image_projection.set_offsets(
+                apply_homography(
+                    track.m_f[track_step][:2], 
+                    homographies[t]
+                ).detach().cpu().numpy()
+            )
 
-            for label in _world_labels:
-                label.remove()
-            _world_labels.clear()
-
-            for i, mean in enumerate(means):
-                txt = ax_world.text(
-                    mean[0],
-                    mean[1],
-                    str(associations[i]),
-                    color="black",
-                    fontsize=6,
-                    ha="center",
-                    va="bottom",
-                    transform=world_text_offset,
-                )
-                _world_labels.append(txt)
-
+            if show_particles:
+                particles = track.particles[track_step] \
+                    .detach().cpu().numpy()[:, :2]
+                pre_resample_particles = track.pre_resample_particles[track_step] \
+                    .detach().cpu().numpy()[:, :2]
             
-            _title.set_text(f"t={t}")
-        except: breakpoint()
+                _particles.set_offsets(particles)
+                # _pre_resample_particles.set_offsets(pre_resample_particles)
+
+        
+            txt = ax_world.text(
+                mean[0], mean[1],
+                str(association),
+                color="blue",
+                fontsize=6,
+                ha="center",
+                va="bottom",
+                transform=world_text_offset,
+            )
+            _world_labels.append(txt)
+        _title.set_text(f"t={t}")
+        # except: breakpoint()
         return (
             _detections,
-            _associated_detections,
+            _associated_detection,
             _image_labels,
-            _projections,
-            _means,
+            _world_to_image_projection,
+            _image_to_world_projections,
+            _mean,
             _particles,
             _pre_resample_particles,
             _title
         )
 
-
     ax_image.invert_yaxis()
     ax_world.invert_yaxis()
+    ax_world.grid(True, alpha=0.1)
     fig.tight_layout()
     anim = FuncAnimation(
         fig, 

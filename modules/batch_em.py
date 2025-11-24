@@ -3,7 +3,7 @@ from typing import Tuple
 import math
 
 
-from .state_estimators import WorldTracker, TrackPosteriors
+from .state_estimators import WorldTrack, TrackPosteriors
 from .math import logpdf_gaussian, logpdf_student
 from .logger import Logger
 
@@ -17,7 +17,7 @@ class BatchEM:
         self,
         transition_model: torch.nn.Module,
         observation_model: torch.nn.Module,
-        world_tracker: WorldTracker,
+        world_tracker: WorldTrack,
         optimizer,
         device = 'cpu'
     ):
@@ -56,19 +56,19 @@ class BatchEM:
         initial_state_term = logpdf_gaussian(initial_state_residuals, P_0)
 
         observation_term = torch.zeros(N)
-        for t in range(T):
-            H = homographies[t]
-            expanded_observation = detections[t].unsqueeze(0).expand(N, -1)
-            # disabling gradients because assuming observation model is not learned for now
-            with torch.no_grad():
-                pred_observations, R = self.observation_model(
-                    samples[:, t, :], 
-                    H,
-                    broadcast_covariance = False
-                )
+        # for t in range(T):
+        #     H = homographies[t]
+        #     expanded_observation = detections[t].unsqueeze(0).expand(N, -1)
+        #     # disabling gradients because assuming observation model is not learned for now
+        #     with torch.no_grad():
+        #         pred_observations, R = self.observation_model(
+        #             samples[:, t, :], 
+        #             H,
+        #             broadcast_covariance = False
+        #         )
 
-            observation_residuals = expanded_observation - pred_observations
-            observation_term += logpdf_student(observation_residuals, R)
+        #     observation_residuals = expanded_observation - pred_observations
+        #     observation_term += logpdf_student(observation_residuals, R)
 
         transition_term = torch.zeros(N)
         for t in range(1, T):
@@ -89,6 +89,7 @@ class BatchEM:
     ) -> Tuple[torch.Tensor, float]:
         assert len(detections) == len(homographies) == len(posteriors)
         # num. videos in batch
+        total_steps = 0
         N = len(detections)
         loss = torch.tensor(0.0)
         # looping through each video
@@ -100,6 +101,7 @@ class BatchEM:
             M = len(video_posteriors)
             # looping through each track
             for m in range(M): 
+                total_steps += video_posteriors[m].m_f.shape[0]
                 Q = self._mc_exp_log_likelihood(
                     video_detections, 
                     video_homographies, 
@@ -107,6 +109,7 @@ class BatchEM:
                 )
                 loss -= Q
         
+        loss /= total_steps
         return loss
 
     def m_step(

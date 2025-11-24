@@ -15,9 +15,9 @@ class TrackFilter:
     Weights particles with a Student-t distribution for robustness.
     '''
     obs_dim = 2
+    state_dim = 4
     def __init__(
-        self, 
-        state_dim: int,
+        self,
         transition_model: torch.nn.Module,
         observation_model: torch.nn.Module,
         num_particles: int,
@@ -26,7 +26,6 @@ class TrackFilter:
         ess_scale: float,
         device = 'cpu'
     ):
-        self.state_dim = state_dim
         self.transition_model = transition_model
         self.observation_model = observation_model
         # filter hyperparameters

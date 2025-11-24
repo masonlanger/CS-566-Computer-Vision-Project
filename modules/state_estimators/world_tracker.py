@@ -12,7 +12,7 @@ from .track_filter import TrackFilter
 from .track_smoother import TrackSmoother
 from .track_posteriors import TrackPosteriors
 
-class WorldTracker:
+class WorldTrack:
     '''
     This performs state inference at the video level.
     It manages the per-track filters/smoothers and performs data association.
@@ -104,7 +104,6 @@ class WorldTracker:
                 # associations = [i]
             )
             new_tracks.append(track)
-            break
 
         return new_tracks
     
@@ -114,6 +113,7 @@ class WorldTracker:
         tracks = []
 
         for t in range(T):
+            if t < 4: continue
             observation = detections[t]
             H = homographies[t]
             # num. of detections

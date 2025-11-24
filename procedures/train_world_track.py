@@ -14,14 +14,14 @@ from modules import (
     Logger, 
     ViewTransformer,
     TransitionModel, CameraObservationModel,
-    TrackFilter, TrackSmoother, WorldTracker,
+    TrackFilter, TrackSmoother, WorldTrack,
     BatchEM,
     animate_video, animate_state_estimation,
     apply_homography
 )
 
-@register('em')
-class EM(Procedure):
+@register('train_world_track')
+class TrainWorldTrack(Procedure):
     def __init__(self, config):
         self.config = config
         self.device = config.device
@@ -68,7 +68,7 @@ class EM(Procedure):
             num_trajectories = config.smoother.num_trajectories
         )
 
-        world_tracker = WorldTracker(
+        world_tracker = WorldTrack(
             initial_state_noise = torch.eye(4, dtype=torch.float32)
                                   * float(config.initial_state.variance),
             track_filter = track_filter,
@@ -89,7 +89,7 @@ class EM(Procedure):
 
     def __call__(self):
         config = self.config
-        epochs = config.epochs
+        epochs = config.em.epochs
         E = config.em.e_steps_per_epoch
         M = config.em.m_steps_per_e_step
 
@@ -105,9 +105,10 @@ class EM(Procedure):
         # Logger.save_anim(anim, 'animation.mp4')
         # return
 
-        detections = [detections[1][:20]]
-        homographies = [homographies[1][:20]]
-        projections = [projections[1][:20]]
+        detections = [detections[2]]
+        homographies = [homographies[2]]
+        projections = [projections[2]]
+
         # for i, _detections in enumerate(detections):
         #     T = len(_detections) 
         #     _projections = []
@@ -126,21 +127,23 @@ class EM(Procedure):
                 Logger.info(f'e={e_iter}')
                 posteriors = em.e_step(detections, homographies)
 
-                if self.debug:
-                    video_idx = 0
-                    anim = animate_state_estimation(
-                        detections[video_idx],
-                        projections[video_idx],
-                        posteriors[video_idx][0:3],
-                        show_particles=True
-                    )
-                    Logger.save_anim(anim, 'state_estimation.mp4')
-                    return
+                # if self.debug:
+                #     video_idx = 0
+                #     anim = animate_state_estimation(
+                #         detections[video_idx],
+                #         projections[video_idx],
+                #         posteriors[video_idx][0:3],
+                #         show_particles=True
+                #     )
+                #     Logger.save_anim(anim, 'state_estimation.mp4')
+                #     return
 
 
                 for m_iter in range(M):
-                    Logger.info(f'm={m_iter}')
+                    # Logger.info(f'm={m_iter}')
                     loss = em.m_step(detections, homographies, posteriors)
-                    Logger.log_metrics({'loss': loss}).debug(f'loss={loss}')
-
-        
+                    Logger.log_metrics({'loss': loss}).debug(f'm={m_iter} loss={loss}')
+            
+            if config.checkpoint:
+                os.makedirs(config.log_dir + '/models', exist_ok=True)
+                torch.save(transition_model.state_dict(), config.log_dir + f'/models/transition_model_{epoch_iter}.pt')

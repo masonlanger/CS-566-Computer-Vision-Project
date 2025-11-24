@@ -3,6 +3,6 @@ defaults:
   - /default 
   - _self_
 
-procedure: preprocess
+procedure: parse_videos
 input_dir: ./videos
 output_dir: ./data

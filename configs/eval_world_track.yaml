@@ -1,0 +1,33 @@
+# @package _global_
+defaults:
+  - /default 
+  - _self_
+
+procedure: eval_world_track
+
+data_dir: ./data
+video_dir: ./videos
+
+n_frames: null
+overlay_video: true
+
+initial_state:
+  variance: [100.0, 100.0, 100.0, 100.0]
+observation_model: 
+  variance: [0.01, 0.01]
+transition_model:
+  name: heuristic
+  variance: [1000.0, 1000.0, 10000.0, 10000.0]
+  
+# transition_model:
+#   num_layers: 3
+#   hidden_dim: 64
+#   scale: 10.0
+#   initial_variance: 100.0
+filter:
+  num_particles: 100
+  prediction_noise: 0.0
+  nu: 5
+  ess_scale: 0.5
+smoother:
+  num_trajectories: 32

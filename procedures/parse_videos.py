@@ -12,8 +12,8 @@ from tqdm import tqdm
 from procedures import Procedure, register
 from modules import Logger, ViewTransformer
 
-@register('preprocess')
-class Preprocess(Procedure):
+@register('parse_videos')
+class ParseVideos(Procedure):
 
     PLAYER_CLASS_ID = 2
     field_config = SoccerPitchConfiguration()
@@ -34,13 +34,13 @@ class Preprocess(Procedure):
             source_path=video_path, end=n_frames,
         )
         detections, homographies, projections = [], [], []
-        tracker = sv.ByteTrack(minimum_consecutive_frames=3)
+        # tracker = sv.ByteTrack(minimum_consecutive_frames=3)
         for i, frame in tqdm(enumerate(frames)):
             result = self.pitch_detection_model(frame, verbose=False)[0]
             keypoints = sv.KeyPoints.from_ultralytics(result)
             result = self.player_detection_model(frame, imgsz=1280, verbose=False)[0]
             frame_detections = sv.Detections.from_ultralytics(result)
-            frame_detections = tracker.update_with_detections(frame_detections) 
+            # frame_detections = tracker.update_with_detections(frame_detections) 
 
             player_only_mask = (frame_detections.class_id == self.PLAYER_CLASS_ID)
             player_detections = frame_detections[player_only_mask]
@@ -50,16 +50,12 @@ class Preprocess(Procedure):
             target = np.array(self.field_config.vertices)[mask].astype(np.float32)
             H, _ = cv2.findHomography(source, target)
             H_inv = np.linalg.inv(H)
-            xy = player_detections.get_anchors_coordinates(anchor=sv.Position.BOTTOM_CENTER)
-
-
             transformer = ViewTransformer(
                 source=keypoints.xy[0][mask].astype(np.float32),
                 target=np.array(self.field_config.vertices)[mask].astype(np.float32)
             )
             xy = player_detections.get_anchors_coordinates(anchor=sv.Position.BOTTOM_CENTER)
             transformed_xy = transformer.transform_points(points=xy)
-
 
             detections.append(torch.tensor(xy, dtype=torch.float32))
             homographies.append(torch.tensor(H_inv, dtype=torch.float32))
@@ -74,7 +70,6 @@ class Preprocess(Procedure):
         detections, homographies, projections = [], [], []
         for file_path in sorted(Path(config.input_dir).glob("*.mp4")):
             Logger.debug(f'Extracting data from ./{str(file_path)}.')
-            # video_info = sv.VideoInfo.from_video_path(str(file_path))
             _detections, _homographies, _projections = self._extract_from_video(
                 video_path = str(file_path), 
                 n_frames = None,

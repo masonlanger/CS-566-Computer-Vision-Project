@@ -8,7 +8,7 @@ detections_file: ./data/detections.pt
 homographies_file: ./data/homographies.pt
 projections_file: ./data/projections.pt
 
-epochs: 2
+checkpoint: true
 
 initial_state:
   variance: 100000
@@ -32,6 +32,7 @@ smoother:
   num_trajectories: 32
 
 em:
+  epochs: 4
   lr: 0.001
   e_steps_per_epoch: 1
   m_steps_per_e_step: 4

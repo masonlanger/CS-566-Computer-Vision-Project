@@ -9,17 +9,16 @@ from ..math import logpdf_gaussian, particles_to_gaussian
 from .track_posteriors import TrackPosteriors
 
 class TrackSmoother:
+    state_dim = 4
     '''
     A per-track backward simulation particle smoother.
     '''
     def __init__(
         self, 
-        state_dim: int,
         transition_model: torch.nn.Module,
         num_trajectories: int,
         device = 'cpu'
     ):
-        self.state_dim = state_dim
         self.transition_model = transition_model
         self.num_trajectories = num_trajectories
         self.device = device
