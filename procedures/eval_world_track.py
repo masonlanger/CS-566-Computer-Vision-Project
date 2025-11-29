@@ -16,7 +16,7 @@ from modules import (
     TransitionModel, HeuristicTransitionModel, CameraObservationModel,
     TrackFilter, TrackSmoother, WorldTrack,
     TrackPosteriors,
-    animate_state_estimation
+    animate_world_track
 )
 
 @register('eval_world_track')
@@ -139,15 +139,13 @@ class EvalWorldTrack(Procedure):
         world_track.process_tracks(tracks)
         tracks = world_track.smooth(tracks)
 
-        anim = animate_state_estimation(
+        anim = animate_world_track(
             detections[0][:T],
             projections[0][:T],
             homographies[0][:T],
-            tracks[0],
+            tracks,
             show_particles = True,
             video_path = config.video_dir +'/video_1.mp4'
 
         )
-        Logger.save_anim(anim, 'state_estimation.mp4')
-
-        breakpoint()
+        Logger.save_anim(anim, 'world_track.mp4')

@@ -16,7 +16,7 @@ from modules import (
     TransitionModel, CameraObservationModel,
     TrackFilter, TrackSmoother, WorldTrack,
     BatchEM,
-    animate_video, animate_state_estimation,
+    animate_video, animate_world_track,
     apply_homography
 )
 
