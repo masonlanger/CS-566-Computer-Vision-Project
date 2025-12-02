@@ -555,20 +555,21 @@ def animate_world_track(
                 continue
 
             association = int(track.associations[track_step])
-            associated_detection = detections_t[association]
-            assoc_dets.append(associated_detection)
+            if association != -1: 
+                associated_detection = detections_t[association]
+                assoc_dets.append(associated_detection)
 
-            txt = ax_image.text(
-                associated_detection[0],
-                associated_detection[1],
-                str(track.id),
-                color="blue",
-                fontsize=8,
-                ha="center",
-                va="bottom",
-                transform=image_text_offset_above,
-            )
-            _image_labels.append(txt)
+                txt = ax_image.text(
+                    associated_detection[0],
+                    associated_detection[1],
+                    str(track.id),
+                    color="blue",
+                    fontsize=8,
+                    ha="center",
+                    va="bottom",
+                    transform=image_text_offset_above,
+                )
+                _image_labels.append(txt)
 
             mean = track.m_s[track_step].detach().cpu().numpy()[:2]
             means.append(mean)
@@ -621,6 +622,7 @@ def animate_world_track(
         return (
             _detections,
             _associated_detection,
+            _world_labels,
             _image_labels,
             _world_to_image_projection,
             _image_to_world_projections,

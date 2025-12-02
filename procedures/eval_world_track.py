@@ -131,21 +131,24 @@ class EvalWorldTrack(Procedure):
             weights_only=False
         )
 
+        i = 1
+
         world_track = self._initialize_world_track()
         tracks = world_track.filter(
-            detections[0][:T], 
-            homographies[0][:T]
+            detections[i][:T], 
+            homographies[i][:T]
         )
         world_track.process_tracks(tracks)
         tracks = world_track.smooth(tracks)
 
         anim = animate_world_track(
-            detections[0][:T],
-            projections[0][:T],
-            homographies[0][:T],
+            detections[i][:T],
+            projections[i][:T],
+            homographies[i][:T],
             tracks,
             show_particles = True,
-            video_path = config.video_dir +'/video_1.mp4'
+            video_path = config.video_dir + f'/video_{i+1}.mp4'
 
         )
         Logger.save_anim(anim, 'world_track.mp4')
+        breakpoint()
