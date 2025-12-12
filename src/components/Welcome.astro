@@ -1,5 +1,10 @@
 ---
 import astroLogo from '../assets/astro.svg';
+import * as intro from '../pages/Intro.md';
+import * as future from '../pages/FutureConsiderations.md';
+import * as implementation from '../pages/Implementation.md';
+import * as background from '../pages/Background.md';
+import Reference from './Reference.astro';
 ---
 
 <div id="container">
@@ -9,24 +14,62 @@ import astroLogo from '../assets/astro.svg';
 			<h2 class="fw-500 m-0 mb-0-25">University of Wisconsin - Madison (COMP SCI 566)</h2>
 			<div id="authors">
 				<p class="m-0">William Cong</p>
-				<p class="m-0">Beomjong Lee</p>
-				<p class="m-0">Mason Langer</p>
 				<p class="m-0">Arul Aravinthan</p>
+				<p class="m-0">Mason Langer</p>
+				<p class="m-0">Beomjong Lee</p>
 			</div>
-			<div class="w-3-4">
-				<p>Consider the following video, which features a sequence of very unremarkable events: simply the team in white passing the ball back and forth in the defensive-to-lower third of the pitch. While this video, on its surface, does not appear to be enticing, it presents an incredibly valuable asset as it pertains player tracking data. For the purposes of soccer, but sports generally, player tracking data–data that identifies the position of the player on the field of play at a given point in time–serves as the basis for many industry-standard analytical models, such as expected goals (xG). </p>
+			<div class="w-3-4 m-auto">
+				<intro.Content />
+			</div>
+			<div class="w-3-4 m-auto">
+				<background.Content />
+			</div>
+			<div class="w-3-4 m-auto">
+				<implementation.Content />
+				<div class="w-100 mb-1">
+					<video controls class="w-100">
+						<source src="/CS-566-Computer-Vision-Project/videos/demo-1-easy.mp4" type="video/mp4">
+					</video>
+					<div class="center mt-1">
+						<em>Video 1: Easy case (no camera switch)</em>
+					</div>
+				</div>
+				<div class="w-100 mb-1">
+					<video controls class="w-100">
+						<source src="/CS-566-Computer-Vision-Project/videos/demo-2-easy.mp4" type="video/mp4">
+					</video>
+					<div class="center mt-1">
+						<em>Video 2: Easy case (with zoom out, "hidden" players)</em>
+					</div>
+				</div>
+				<div class="w-100 mb-1">
+					<video controls class="w-100">
+						<source src="/CS-566-Computer-Vision-Project/videos/demo-3-hard.mp4" type="video/mp4">		
+					</video>
+					<div class="center mt-1">
+						<em>Video 3: Hard case (quick camera panning)</em>
+					</div>
+				</div>
+				<div>
+					<video controls class="w-100">
+						<source src="/CS-566-Computer-Vision-Project/videos/demo-4-bad-homography.mp4" type="video/mp4">
+					</video>
+					<div class="center mt-1">
+						<em>Video 4: Bad homography estimation</em>
+					</div>
+				</div>
+			</div>
+
+			<div class="w-3-4 m-auto">
+				<future.Content />
 			</div>
 		</section>
-		<div class="center">
-			<video controls width="720" height="480">
-				<source src="/videos/video_1.mp4" type="video/mp4" />
-				Your browser does not support the video tag.
-			</video>
-		</div>
-		<section class="mt-2">
-			<div class="w-3-4">
-				<p>While this video, on its surface, is not exceptional in terms of quality of play or exciting moments, it presents an incredibly valuable asset as it pertains to <b>player tracking data</b>. For the purposes of soccer, but sports generally, player tracking data–data that identifies the position of the player on the field of play at a given point in time–serves as the basis for many industry-standard analytical models, such as expected goals (xG). Thus, high-quality computer vision models are necessary for the identification of players and mappings of their movements throughout the game. However, these industry-standard models are often proprietary, and clean and accessible footage for open-source models are hard to come by. As such, our project seeks to bridge the gap between high-quality, accurate identification and accessible game footage by engineering a model to handle basic tasks such as location mapping, alongside re-identification and noise reduction to provide the foundation for a widely-accessible tracking tool.</p>
-			</div>
+		<section id="references" class="m-auto">
+			<h2>References</h2>
+			<ul>
+				<Reference author="Majeed et. al" article={true} title="Real-time analysis of soccer ball–player interactions using graph convolutional networks for enhanced game insights" source="Sci Rep" volume="15" year="2025" url="https://doi.org/10.1038/s41598-025-05462-7"/>
+				<Reference author="Bewley et. al" article={true} title="Simple online and realtime tracking" source="2016 IEEE International Conference on Computer Vision (ICCV)" year="2016" url="http://dx.doi.org/10.1109/ICIP.2016.7533003"/>
+			</ul>
 		</section>
 	</main>
 </div>
@@ -98,6 +141,10 @@ import astroLogo from '../assets/astro.svg';
 		display: flex;
 		justify-content: center;
 		align-items: center;
+	}
+
+	.m-auto {
+		margin: auto;
 	}
 </style>
 <style>
