@@ -1,0 +1,24 @@
+---
+const props = Astro.props;
+---
+
+
+<li>
+  <div class="reference">
+      {props.author && `${props.author}. `} {props.article ? `"${props.title}."` : <em>{props.title}</em>} {props.source && <em>{props.source}</em>}, {props.volume ? `vol. ${props.volume},` : ""} {props.year}. {props.url && <a href={props.url} target="_blank" rel="noopener noreferrer">{props.url}</a>}
+  </div>
+</li>
+
+<style>
+  li {
+    margin-bottom: 0.5em;
+    list-style-type: none;
+  }
+
+  .reference {
+    width: 90%;
+    padding-left: 50px;
+    text-indent: -50px;
+    margin: 0;
+  }
+</style>
