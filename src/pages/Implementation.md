@@ -64,7 +64,7 @@ We evaluate both methods using the *association accuracy* (AssA) metric which me
 | AssA | Mean | STD |
 | - | - | - |
 | ByteTrack | 0.568 | 0.215 |
-| **WorldTrack** | **0.830** | **0.052** |
+| WorldTrack | 0.830 | 0.052 |
 
 WorldTrack achieves a higher mean AssA and lower standard deviation. The reduced variance indicates that WorldTrack remains stable across diverse camera motions, whereas ByteTrack exhibits larger fluctuations due to its reliance on image-space stability.
 

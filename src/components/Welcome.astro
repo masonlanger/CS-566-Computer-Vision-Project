@@ -10,13 +10,15 @@ import Reference from './Reference.astro';
 <div id="container">
 	<main>
 		<section id="hero">
-			<h1 class="title mb-0-1">World-Space Player Tracking & Re-identification Under Partial Visibility in Broadcast Soccer Footage</h1>
-			<h2 class="fw-500 m-0 mb-0-25">University of Wisconsin - Madison (COMP SCI 566)</h2>
-			<div id="authors">
-				<p class="m-0">William Cong</p>
-				<p class="m-0">Arul Aravinthan</p>
-				<p class="m-0">Mason Langer</p>
-				<p class="m-0">Beomjong Lee</p>
+			<h1 class="title mb-0-1">World-Space Player Tracking & Re-identification Under Partial Visibility in Soccer Footage</h1>
+			<div class="w-100 flex-col align-center">
+				<h2 class="fw-500 m-0 mb-0-25">University of Wisconsin - Madison (COMP SCI 566)</h2>
+				<div id="authors">
+					<p class="m-0">William Cong</p>
+					<p class="m-0">Arul Aravinthan</p>
+					<p class="m-0">Mason Langer</p>
+					<p class="m-0">Beomjong Lee</p>
+				</div>
 			</div>
 			<div class="w-3-4 m-auto">
 				<intro.Content />
@@ -26,36 +28,44 @@ import Reference from './Reference.astro';
 			</div>
 			<div class="w-3-4 m-auto">
 				<implementation.Content />
-				<div class="w-100 mb-1">
-					<video controls class="w-100">
-						<source src="/CS-566-Computer-Vision-Project/videos/demo-1-easy.mp4" type="video/mp4">
-					</video>
-					<div class="center mt-1">
-						<em>Video 1: Easy case (no camera switch)</em>
+				<div class="w-100 flex-col align-center">
+					<div class="w-2-3 mb-1">
+						<video controls class="w-100 center">
+							<source src="/CS-566-Computer-Vision-Project/videos/demo-1-easy.mp4" type="video/mp4">
+						</video>
+						<div class="mt-1 center">
+							<em>Video 1: Easy case (no camera switch)</em>
+						</div>
 					</div>
 				</div>
-				<div class="w-100 mb-1">
-					<video controls class="w-100">
-						<source src="/CS-566-Computer-Vision-Project/videos/demo-2-easy.mp4" type="video/mp4">
-					</video>
-					<div class="center mt-1">
-						<em>Video 2: Easy case (with zoom out, "hidden" players)</em>
+				<div class="w-100 flex-col align-center">
+					<div class="w-2-3 mb-1">
+						<video controls class="w-100 center">
+							<source src="/CS-566-Computer-Vision-Project/videos/demo-2-easy.mp4" type="video/mp4">
+						</video>
+						<div class="mt-1 center">
+							<em>Video 2: Easy case (with zoom out, "hidden" players)</em>
+						</div>
 					</div>
 				</div>
-				<div class="w-100 mb-1">
-					<video controls class="w-100">
-						<source src="/CS-566-Computer-Vision-Project/videos/demo-3-hard.mp4" type="video/mp4">		
-					</video>
-					<div class="center mt-1">
-						<em>Video 3: Hard case (quick camera panning)</em>
+				<div class="w-100 flex-col align-center">
+					<div class="w-2-3 mb-1">
+						<video controls class="w-100 center">
+							<source src="/CS-566-Computer-Vision-Project/videos/demo-3-hard.mp4" type="video/mp4">		
+						</video>
+						<div class="mt-1 center">
+							<em>Video 3: Hard case (quick camera panning)</em>
+						</div>
 					</div>
 				</div>
-				<div>
-					<video controls class="w-100">
-						<source src="/CS-566-Computer-Vision-Project/videos/demo-4-bad-homography.mp4" type="video/mp4">
-					</video>
-					<div class="center mt-1">
-						<em>Video 4: Bad homography estimation</em>
+				<div class="w-100 flex-col align-center">
+					<div class="w-2-3 mb-1">
+						<video controls class="w-100">
+							<source src="/CS-566-Computer-Vision-Project/videos/demo-4-bad-homography.mp4" type="video/mp4">
+						</video>
+						<div class="mt-1 center">
+							<em>Video 4: Bad homography estimation</em>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -67,14 +77,55 @@ import Reference from './Reference.astro';
 		<section id="references" class="m-auto">
 			<h2>References</h2>
 			<ul>
-				<Reference author="Majeed et. al" article={true} title="Real-time analysis of soccer ball–player interactions using graph convolutional networks for enhanced game insights" source="Sci Rep" volume="15" year="2025" url="https://doi.org/10.1038/s41598-025-05462-7"/>
 				<Reference author="Bewley et. al" article={true} title="Simple online and realtime tracking" source="2016 IEEE International Conference on Computer Vision (ICCV)" year="2016" url="http://dx.doi.org/10.1109/ICIP.2016.7533003"/>
+				<Reference author="Majeed et. al" article={true} title="Real-time analysis of soccer ball–player interactions using graph convolutional networks for enhanced game insights" source="Sci Rep" volume="15" year="2025" url="https://doi.org/10.1038/s41598-025-05462-7"/>
+				<Reference author="Theiner, Jonas and Ralph Ewerth" article={true} title="TVCalib: Camera Calibration for Sports Field Registration in Soccer" year="2023" url="https://mm4spa.github.io/tvcalib/" />
+				<Reference author="SoccerNet" article={true} title="Tracking" source="SoccerNet" year="2022" url="https://www.soccer-net.org/tasks/tracking" />
 			</ul>
 		</section>
 	</main>
 </div>
 
 <style is:global>
+	table {
+		padding: 0.5rem 0.8rem;
+		width: fit-content;
+		margin: auto;
+		border-collapse: collapse;
+	}
+
+	thead {
+		font-size: 16px;
+		font-weight: 600;
+		background-color: #eaeaea !important;
+	}
+
+	tr th {
+		text-align: left;
+		padding: 0.5rem 0.8rem;
+	}
+
+	tbody tr td {
+		text-align: left;
+		padding: 0.5rem 0.8rem;
+	}
+
+	tbody tr:nth-child(even) {
+		background-color: #eef7f0;
+	}
+	tbody tr:nth-child(odd) {
+		background-color: #fff;
+	}
+
+	tbody tr {
+		transition: opacity 0.2s, font-weight: 0.2s;
+	}
+	tbody tr:hover {
+		font-weight: 500;
+		opacity: 0.8;
+		cursor: pointer;
+	}
+
 	.w-100 {
 		width: 100%;
 	}
@@ -170,7 +221,6 @@ import Reference from './Reference.astro';
 	}
 
 	#authors {
-		width: 100%;
 		display: flex;
 		flex-direction: row;
 		font-size: 18px;
@@ -212,6 +262,15 @@ import Reference from './Reference.astro';
 	#links a.button:hover {
 		color: rgb(230, 230, 230);
 		box-shadow: none;
+	}
+
+	.flex-col {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.align-center {
+		align-items: center;
 	}
 
 	pre {
